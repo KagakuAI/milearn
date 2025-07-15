@@ -7,7 +7,7 @@ It is designed for general-purpose use in machine learning applications where da
 Key Features
 ------------
 
-- 🧠 Varieties of traditional, upgraded, and neural network-based supervised learning algorithms.
+- 🧠 Varieties of traditional, upgraded, and neural network-based supervised learning algorithms
 - 🔎 Key instance detection with model-based and model-agnostic approaches
 - ⚙️ Scikit-learn compatible API for easy integration
 
@@ -19,18 +19,11 @@ In **Multi-Instance Learning (MIL)**, data is grouped into **bags**, each contai
 
 **Example:**
 
-- An email (bag) is labeled spam if **at least one sentence (instance)** is spammy.
-- A video (bag) is labeled as violent if **at least one frame (instance)** shows violence.
-- A document (bag) is classified as toxic based on certain **key phrases** (instances).
-- A molecule (bag) is represented by its **conformers** or **fragments** (instances).
-- A biological sequence (bag) is broken into **subsequences** of RNA, DNA, or protein domains (instances).
-
-
-**MIL is useful in many domains:**
-- Text and document classification
-- Image and video analysis
-- Audio event detection
-- Bioinformatics, cheminformatics, and beyond
+- An email (bag) is labeled spam if **at least one sentence (instance)** is spammy
+- A video (bag) is labeled as violent if **at least one frame (instance)** shows violence
+- A document (bag) is classified as toxic based on certain **key phrases** (instances)
+- A molecule (bag) is represented by its **conformers** or **fragments** (instances)
+- A biological sequence (bag) is broken into **subsequences** of RNA, DNA, or protein domains (instances)
 
 Installation
 ------------
@@ -39,12 +32,12 @@ Install directly from GitHub:
 
 .. code-block:: bash
 
-   # Create and activate a new conda environment
-   conda create -n milearn python=3.9 -y
-   conda activate milearn
+    # Create and activate a new conda environment
+    conda create -n milearn python=3.9 -y
+    conda activate milearn
 
-   # Install directly from GitHub
-   pip install git+https://github.com/KagakuAI/milearn.git
+    # Install directly from GitHub
+    pip install git+https://github.com/KagakuAI/milearn.git
 
 Quick Start
 -----------
