@@ -39,6 +39,14 @@ Install directly from GitHub:
     # Install directly from GitHub
     pip install git+https://github.com/KagakuAI/milearn.git
 
+The installed ``milearn`` environment can then be added to the Jupyter platform:
+
+.. code-block:: bash
+
+    conda install ipykernel
+    python -m ipykernel install --user --name milearn --display-name "milearn"
+
+
 Quick Start
 -----------
 
