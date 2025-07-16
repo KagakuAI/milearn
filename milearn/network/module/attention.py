@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from qsarmil.mil.network.module.base import BaseNetwork, FeatureExtractor
+from .base import BaseNetwork, FeatureExtractor
 
 
 class AttentionNetwork(BaseNetwork):

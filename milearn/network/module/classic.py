@@ -1,6 +1,6 @@
 from torch import nn
 from torch.nn import Sequential, Linear, Softmax, Sigmoid
-from qsarmil.mil.network.module.base import BaseNetwork, BaseClassifier, FeatureExtractor
+from .base import BaseNetwork, BaseClassifier, FeatureExtractor
 
 
 class BagNetwork(BaseNetwork):

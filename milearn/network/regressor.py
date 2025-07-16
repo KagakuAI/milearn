@@ -2,18 +2,18 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 
-from qsarmil.mil.network.module.attention import (AttentionNetwork,
+from milearn.network.module.attention import (AttentionNetwork,
                                                   SelfAttentionNetwork,
                                                   GatedAttentionNetwork,
                                                   MultiHeadAttentionNetwork,
                                                   HopfieldAttentionNetwork)
 
-from qsarmil.mil.network.module.attention import TempAttentionNetwork
+from milearn.network.module.attention import TempAttentionNetwork
 
-from qsarmil.mil.network.module.base import BaseRegressor
-from qsarmil.mil.network.module.utils import add_padding
-from qsarmil.mil.network.module.dynamic import DynamicPoolingNetwork
-from qsarmil.mil.network.module.classic import InstanceNetwork, BagNetwork
+from milearn.network.module.base import BaseRegressor
+from milearn.network.module.utils import add_padding
+from milearn.network.module.dynamic import DynamicPoolingNetwork
+from milearn.network.module.classic import InstanceNetwork, BagNetwork
 
 
 class AttentionNetworkRegressor(AttentionNetwork, BaseRegressor):

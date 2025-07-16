@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 from torch.nn import Softmax
-from qsarmil.mil.network.module.base import BaseNetwork, BaseRegressor, FeatureExtractor
+from .base import BaseNetwork, BaseRegressor, FeatureExtractor
 
 
 class MarginLoss(nn.Module):

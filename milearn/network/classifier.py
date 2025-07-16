@@ -1,8 +1,8 @@
-from qsarmil.mil.network.module.attention import AttentionNetwork, MultiHeadAttentionNetwork, SelfAttentionNetwork, GatedAttentionNetwork, \
+from milearn.network.module.attention import AttentionNetwork, MultiHeadAttentionNetwork, SelfAttentionNetwork, GatedAttentionNetwork, \
     TempAttentionNetwork, HopfieldAttentionNetwork
-from qsarmil.mil.network.module.base import BaseClassifier
-from qsarmil.mil.network.module.dynamic import DynamicPoolingNetwork, MarginLoss
-from qsarmil.mil.network.module.classic import BagNetwork, InstanceNetwork
+from milearn.network.module.base import BaseClassifier
+from milearn.network.module.dynamic import DynamicPoolingNetwork, MarginLoss
+from milearn.network.module.classic import BagNetwork, InstanceNetwork
 
 
 class AttentionNetworkClassifier(AttentionNetwork, BaseClassifier):
