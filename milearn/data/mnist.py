@@ -143,7 +143,7 @@ def create_bags_sum(data, targets, bag_size=5, num_bags=1000, random_state=42):
         label = np.sum(digits)
 
         bags.append(bag)
-        labels.append(label)
+        labels.append(label.item())
         instance_digits.append(digits.tolist())
 
     return bags, labels, instance_digits
