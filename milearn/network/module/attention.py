@@ -22,20 +22,22 @@ class AttentionNetwork(BaseNetwork):
         )
         self.estimator = nn.Linear(hidden_layer_sizes[-1], 1)
 
-    def forward(self, x: torch.Tensor, mask: torch.Tensor):
+    def forward(self, x: torch.Tensor, m: torch.Tensor):
         """
         Args:
             x: Input instances (B, N, D_in)
-            mask: Mask for valid instances (B, N, 1)
+            m: Mask for valid instances (B, N, 1)
 
         Returns:
             weights: Attention weights (B, 1, N)
             out: Bag-level prediction (B, 1, 1)
         """
         x_feat = self.extractor(x)  # (B, N, D_hidden)
-        logits = mask * self.detector(x_feat)  # (B, N, 1)
+        logits = self.detector(x_feat)  # (B, N, 1)
         logits = logits.transpose(2, 1)          # (B, 1, N)
-        weights = torch.softmax(logits, dim=2)   # (B, 1, N)
+
+        masked_logits = logits.masked_fill(m.transpose(2, 1) == 0, float('-inf'))
+        weights = torch.softmax(masked_logits, dim=2)   # (B, 1, N)
 
         bag_embedding = torch.bmm(weights, x_feat)  # (B, 1, D_hidden)
         bag_score = self.estimator(bag_embedding)          # (B, 1, 1)
@@ -48,11 +50,13 @@ class TempAttentionNetwork(AttentionNetwork):
         super().__init__(**kwargs)
         self.tau = tau
 
-    def forward(self, x: torch.Tensor, mask: torch.Tensor):
+    def forward(self, x: torch.Tensor, m: torch.Tensor):
         x_feat = self.extractor(x)
-        logits = mask * self.detector(x_feat)
+        logits = m * self.detector(x_feat)
         logits = logits.transpose(2, 1)
-        weights = torch.softmax(logits / self.tau, dim=2)
+
+        masked_logits = logits.masked_fill(m.transpose(2, 1) == 0, float('-inf'))
+        weights = torch.softmax(masked_logits / self.tau, dim=2)
 
         bag_embedding = torch.bmm(weights, x_feat)
         bag_score = self.estimator(bag_embedding)
@@ -78,11 +82,11 @@ class GatedAttentionNetwork(BaseNetwork):
         self.detector = nn.Linear(hidden_layer_sizes[-1], 1)
         self.estimator = nn.Linear(hidden_layer_sizes[-1], 1)
 
-    def forward(self, x: torch.Tensor, mask: torch.Tensor):
+    def forward(self, x: torch.Tensor, m: torch.Tensor):
         """
         Args:
             x: (B, N, D_in)
-            mask: (B, N, 1)
+            m: (B, N, 1)
 
         Returns:
             weights: Attention weights (B, 1, N)
@@ -91,9 +95,11 @@ class GatedAttentionNetwork(BaseNetwork):
         x_feat = self.extractor(x)  # (B, N, D_hidden)
         x_gated = self.gate_V(x_feat) * self.gate_U(x_feat) # (B, N, D_hidden)
 
-        logits = mask * self.detector(x_gated)  # (B, N, 1)
-        logits = logits.transpose(2, 1)       # (B, 1, N)
-        weights = torch.softmax(logits, dim=2)  # (B, 1, N)
+        logits = self.detector(x_gated)  # (B, N, 1)
+        logits = logits.transpose(2, 1)  # (B, 1, N)
+
+        masked_logits = logits.masked_fill(m.transpose(2, 1) == 0, float('-inf'))
+        weights = torch.softmax(masked_logits, dim=2)  # (B, 1, N)
 
         bag_embedding = torch.bmm(weights, x_feat)  # (B, 1, D_hidden)
         bag_score = self.estimator(bag_embedding)          # (B, 1, 1)
@@ -118,11 +124,11 @@ class MultiHeadAttentionNetwork(BaseNetwork):
         ])
         self.estimator = nn.Linear(hidden_layer_sizes[-1] * self.num_heads, 1)
 
-    def forward(self, x: torch.Tensor, mask: torch.Tensor):
+    def forward(self, x: torch.Tensor, m: torch.Tensor):
         """
         Args:
             x: (B, N, D_in)
-            mask: (B, N, 1)
+            m: (B, N, 1)
 
         Returns:
             avg_weights: Average attention weights across heads (B, 1, N)
@@ -132,8 +138,12 @@ class MultiHeadAttentionNetwork(BaseNetwork):
 
         head_outputs, head_weights = [], []
         for head in self.detector:
-            logits = mask * head(x_feat)  # (B, N, 1)
-            weights = torch.softmax(logits, dim=1)  # (B, N, 1)
+
+            logits = head(x_feat)  # (B, N, 1)
+
+            masked_logits = logits.masked_fill(m == 0, float('-inf'))
+            weights = torch.softmax(masked_logits, dim=1)  # (B, N, 1)
+
             head_embedding = torch.sum(weights * x_feat, dim=1)  # (B, D_hidden)
             head_outputs.append(head_embedding)
             head_weights.append(weights)
@@ -145,6 +155,7 @@ class MultiHeadAttentionNetwork(BaseNetwork):
         bag_pred = self.get_pred(bag_score.unsqueeze(1).unsqueeze(2))  # reshape (B, 1, 1)
 
         return weights, bag_pred
+
 
 class SelfAttentionNetwork(BaseNetwork):
     def __init__(self, **kwargs):
@@ -176,13 +187,15 @@ class SelfAttentionNetwork(BaseNetwork):
         x_att = torch.bmm(attn_weights, V)
         return x_att
 
-    def forward(self, x: torch.Tensor, mask: torch.Tensor):
+    def forward(self, x: torch.Tensor, m: torch.Tensor):
         x_feat = self.extractor(x)
         x_att = self.self_attention(x_feat)
 
-        logits = mask * self.detector(x_feat)
+        logits = self.detector(x_feat)
         logits = logits.transpose(2, 1)
-        weights = torch.softmax(logits, dim=2)
+
+        masked_logits = logits.masked_fill(m.transpose(2, 1) == 0, float('-inf'))
+        weights = torch.softmax(masked_logits, dim=2)
 
         bag_embedding = torch.bmm(weights, x_att)
         bag_score = self.estimator(bag_embedding)
@@ -200,7 +213,7 @@ class HopfieldAttentionNetwork(BaseNetwork):
         self.query_vector = nn.Parameter(torch.randn(1, hidden_layer_sizes[-1]))
         self.estimator = nn.Linear(hidden_layer_sizes[-1], 1)
 
-    def forward(self, x: torch.Tensor, mask: torch.Tensor):
+    def forward(self, x: torch.Tensor, m: torch.Tensor):
         B, N, _ = x.size()
 
         x_feat = self.extractor(x)
@@ -209,9 +222,9 @@ class HopfieldAttentionNetwork(BaseNetwork):
 
         logits = self.beta * torch.bmm(q, x_feat.transpose(2, 1))
 
-        mask_bool = mask.squeeze(-1).bool()
-        logits = logits.masked_fill(~mask_bool.unsqueeze(1), float("-inf"))
-        weights = torch.softmax(logits, dim=2)
+        mask_bool = m.squeeze(-1).bool()
+        masked_logits = logits.masked_fill(~mask_bool.unsqueeze(1), float("-inf"))
+        weights = torch.softmax(masked_logits, dim=2)
 
         bag_embedding = torch.bmm(weights, x_feat)
         bag_score = self.estimator(bag_embedding)

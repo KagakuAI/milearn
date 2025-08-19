@@ -1,12 +1,60 @@
 import torch
-import numpy as np
+import pytorch_lightning as pl
 from torch import nn
-import torch_optimizer as optim
 from torch.nn import Sigmoid, Linear, ReLU, Sequential
-from sklearn.model_selection import train_test_split
-from .utils import add_padding, get_mini_batches, set_seed
+from torch.utils.data import DataLoader, TensorDataset, random_split
+from pytorch_lightning.callbacks import EarlyStopping
+import numpy as np
+from .utils import add_padding, silence_lightning, TrainLogging
 
-set_seed(42)  # TODO change later
+
+class DataModule(pl.LightningDataModule):
+    def __init__(self, x, y=None, batch_size=32, num_workers=0, val_split=0.2):
+        """
+        x: input instances
+        y: labels (optional, if None → inference mode)
+        """
+        super().__init__()
+        self.x = x
+        self.y = y
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.val_split = val_split
+
+    def setup(self, stage=None):
+        x, m = add_padding(self.x)
+        x_tensor = torch.tensor(x, dtype=torch.float32)
+        m_tensor = torch.tensor(m, dtype=torch.float32)
+        self.m = m_tensor
+
+        if self.y is not None:
+            y_tensor = torch.tensor(self.y, dtype=torch.float32)
+            dataset = TensorDataset(x_tensor, y_tensor, m_tensor)
+            n_val = int(len(dataset) * self.val_split)
+            seed = torch.Generator().manual_seed(42)
+            self.train_ds, self.val_ds = random_split(dataset, [len(dataset)-n_val, n_val], generator=seed)
+        else:
+            self.dataset = TensorDataset(x_tensor, m_tensor)
+
+    # Training/validation loaders
+    def train_dataloader(self):
+        if self.y is None:
+            raise ValueError("No labels provided, cannot create train loader")
+        return DataLoader(self.train_ds, batch_size=self.batch_size,
+                          shuffle=True, num_workers=self.num_workers)
+
+    def val_dataloader(self):
+        if self.y is None:
+            raise ValueError("No labels provided, cannot create val loader")
+        return DataLoader(self.val_ds, batch_size=self.batch_size,
+                          num_workers=self.num_workers)
+
+    # Prediction loader
+    def predict_dataloader(self):
+        dataset = self.dataset
+
+        return DataLoader(dataset, batch_size=self.batch_size, num_workers=self.num_workers)
+
 
 class BaseClassifier:
     def loss(self, y_pred, y_true):
@@ -41,143 +89,127 @@ class FeatureExtractor:
         return net
 
 
-class BaseNetwork(nn.Module):
+class BaseNetwork(pl.LightningModule):
     def __init__(self,
                  hidden_layer_sizes=(256, 128, 64),
-                 num_epoch=500,
+                 max_epochs=500,
                  batch_size=128,
                  learning_rate=0.001,
+                 early_stopping=True,
                  weight_decay=0.001,
-                 instance_weight_dropout=0,
+                 num_workers=1,
                  verbose=False,
-                 init_cuda=False):
-
+                 accelerator="cpu"):
         super().__init__()
+        self.save_hyperparameters()
 
-        self.hidden_layer_sizes = hidden_layer_sizes
-        self.num_epoch = num_epoch
-        self.learning_rate = learning_rate
-        self.weight_decay = weight_decay
-        self.instance_weight_dropout = instance_weight_dropout
-        self.batch_size = batch_size
-        self.init_cuda = init_cuda
-        self.verbose = verbose
+        # Build a simple feed-forward backbone
+        layers = []
+        for in_dim, out_dim in zip(
+                (hidden_layer_sizes[:-1]),
+                (hidden_layer_sizes[1:])
+        ):
+            layers.append(nn.Linear(in_dim, out_dim))
+            layers.append(nn.ReLU())
+        layers.append(nn.Linear(hidden_layer_sizes[-1], 1))  # generic head
+        self.model = nn.Sequential(*layers)
 
-    def _initialize(self, input_layer_size, hidden_layer_sizes):
-        pass
+    def forward(self, x, m=None):
+        return None, self.model(x)
 
-    def _train_val_split(self, x, y, val_size=0.2, random_state=42):
-        x, y = np.asarray(x, dtype="object"), np.asarray(y, dtype="object")
-        x, m = add_padding(x)
+    def training_step(self, batch, batch_idx):
+        x, y, m = batch
+        w_hat, y_hat = self(x, m)
+        loss = self.loss(y_hat, y)
+        self.log("train_loss", loss, on_step=False, on_epoch=True)
+        return loss
 
-        x_train, x_val, y_train, y_val, m_train, m_val = train_test_split(x, y, m, test_size=val_size,
-                                                                          random_state=random_state)
-        x_train, y_train, m_train = self._array_to_tensor(x_train, y_train, m_train)
-        x_val, y_val, m_val = self._array_to_tensor(x_val, y_val, m_val)
+    def validation_step(self, batch, batch_idx):
+        x, y, m = batch
+        w_hat, y_hat = self(x, m)
+        loss = self.loss(y_hat, y)
+        self.log("val_loss", loss, on_step=False, on_epoch=True)
+        return loss
 
-        return x_train, x_val, y_train, y_val, m_train, m_val
+    def predict_step(self, batch, batch_idx):
+        x, m = batch
+        return self(x, m)
 
-    def _array_to_tensor(self, x, y, m):
-
-        x = torch.from_numpy(x.astype('float32'))
-        y = torch.from_numpy(y.astype('float32'))
-        m = torch.from_numpy(m.astype('float32'))
-        if y.ndim == 1:
-            y = y.reshape(-1, 1)
-        if self.init_cuda:
-            x, y, m = x.cuda(), y.cuda(), m.cuda()
-        return x, y, m
-
-    def _loss_batch(self, x_mb, y_mb, m_mb, optimizer=None):
-        w_out, y_out = self.forward(x_mb, m_mb)
-        total_loss = self.loss(y_out, y_mb)
-        if optimizer is not None:
-            optimizer.zero_grad()
-            total_loss.backward()
-            optimizer.step()
-        return total_loss.item()
-
-    def _reset_weights(self):
-        def _init_weights(m):
-            if isinstance(m, nn.Linear):
-                nn.init.xavier_uniform_(m.weight)
-                if m.bias is not None:
-                    nn.init.zeros_(m.bias)
-            elif isinstance(m, nn.Conv2d):
-                nn.init.kaiming_uniform_(m.weight, mode='fan_in', nonlinearity='relu')
-                if m.bias is not None:
-                    nn.init.zeros_(m.bias)
-            elif isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.BatchNorm1d):
-                nn.init.ones_(m.weight)
-                nn.init.zeros_(m.bias)
-            elif isinstance(m, nn.LayerNorm):
-                nn.init.ones_(m.weight)
-                nn.init.zeros_(m.bias)
-            # Add other layer types and initializations as needed
-        self.apply(_init_weights)
+    def configure_optimizers(self):
+        optimizer = torch.optim.AdamW(
+            self.parameters(),
+            lr=self.hparams.learning_rate,
+            weight_decay=self.hparams.weight_decay
+            )
+        return optimizer
 
     def fit(self, x, y):
 
-        self._reset_weights()
-
+        # 1. Initialize network
         input_layer_size = x[0].shape[-1] # TODO make consistent: x.shape[-1]
         self._initialize(input_layer_size=input_layer_size,
-                         hidden_layer_sizes=self.hidden_layer_sizes)
+                         hidden_layer_sizes=self.hparams.hidden_layer_sizes)
 
-        x_train, x_val, y_train, y_val, m_train, m_val = self._train_val_split(x, y)
-        optimizer = optim.Yogi(self.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
+        # 2. Prepare data
+        datamodule = DataModule(x, y,
+                                batch_size=self.hparams.batch_size,
+                                num_workers=self.hparams.num_workers,
+                                val_split=0.2)
 
-        val_loss = []
-        for epoch in range(self.num_epoch):
+        # 3. Trainer configuration
+        callbacks = []
+        if self.hparams.early_stopping:
+            early_stop_callback = EarlyStopping(
+                monitor="val_loss", patience=10, mode="min"
+            )
+            callbacks.append(early_stop_callback)
+        if self.hparams.verbose:
+            logging_callback = TrainLogging()
+            callbacks.append(logging_callback)
 
-            mb = get_mini_batches(x_train, y_train, m_train, batch_size=self.batch_size)
+        silence_lightning()
 
-            self.train()
-            for x_mb, y_mb, m_mb in mb:
-                loss = self._loss_batch(x_mb, y_mb, m_mb, optimizer=optimizer)
-
-            self.eval()
-            with torch.no_grad():
-                loss = self._loss_batch(x_val, y_val, m_val, optimizer=None)
-                val_loss.append(loss)
-
-            min_loss_idx = val_loss.index(min(val_loss))
-            if min_loss_idx == epoch:
-                best_parameters = self.state_dict()
-                if self.verbose:
-                    print(epoch, loss)
-
-        self.load_state_dict(best_parameters, strict=True)
+        # 4. Build trainer
+        self._trainer = pl.Trainer(
+            max_epochs=self.hparams.max_epochs,
+            callbacks=callbacks,
+            accelerator=self.hparams.accelerator,
+            logger=False,
+            enable_model_summary=False,
+            enable_progress_bar=False,
+            enable_checkpointing=False,
+            deterministic=True,
+        )
+        # 5. Fit trainer
+        self._trainer.fit(self, datamodule=datamodule)
 
         return self
 
     def predict(self, x):
-        x, m = add_padding(np.asarray(x, dtype="object"))
-        x = torch.from_numpy(x.astype('float32'))
-        m = torch.from_numpy(m.astype('float32'))
 
-        self.eval()
-        with torch.no_grad():
-            if self.init_cuda:
-                x, m = x.cuda(), m.cuda()
-            w, y_pred = self.forward(x, m)
-        return np.asarray(y_pred.cpu()).flatten()
+        datamodule = DataModule(
+            x,
+            batch_size=self.hparams.batch_size,
+            num_workers=self.hparams.num_workers
+        )
+
+        outputs = self._trainer.predict(self, datamodule=datamodule)
+        y_pred = torch.cat([y for w, y in outputs], dim=0).cpu().numpy().flatten()
+
+        return y_pred
+
 
     def get_instance_weights(self, x):
-        x, m = add_padding(np.asarray(x, dtype="object"))
-        x = torch.from_numpy(x.astype('float32'))
-        m = torch.from_numpy(m.astype('float32'))
 
-        self.eval()
-        with torch.no_grad():
-            if self.init_cuda:
-                x, m = x.cuda(), m.cuda()
-            w, y_pred = self.forward(x, m)
+        datamodule = DataModule(
+            x,
+            batch_size=self.hparams.batch_size,
+            num_workers=self.hparams.num_workers
+        )
 
-        w = w.view(w.shape[0], w.shape[-1]).cpu()
-        m = m.cpu()
-        w = [np.asarray(i[j.bool().flatten()]) for i, j in zip(w, m)]
-        return w
+        outputs = self._trainer.predict(self, datamodule=datamodule)
+        w_pred = torch.cat([w for w, y in outputs], dim=0)
+        w_pred = w_pred.reshape(w_pred.shape[0], w_pred.shape[-1])
+        w_pred = [np.asarray(i[j.bool().flatten()]) for i, j in zip(w_pred, datamodule.m)] # skip mask predicted weights
 
-
-
+        return w_pred

@@ -1,8 +1,8 @@
-from milearn.network.module.attention import AttentionNetwork, MultiHeadAttentionNetwork, SelfAttentionNetwork, GatedAttentionNetwork, \
+from .module.attention import AttentionNetwork, MultiHeadAttentionNetwork, SelfAttentionNetwork, GatedAttentionNetwork, \
     TempAttentionNetwork, HopfieldAttentionNetwork
-from milearn.network.module.base import BaseClassifier
-from milearn.network.module.dynamic import DynamicPoolingNetwork, MarginLoss
-from milearn.network.module.classic import BagNetwork, InstanceNetwork
+from .module.base import BaseClassifier
+from .module.dynamic import DynamicPoolingNetwork, MarginLoss
+from .module.classic import BagNetwork, InstanceNetwork
 
 
 class AttentionNetworkClassifier(AttentionNetwork, BaseClassifier):

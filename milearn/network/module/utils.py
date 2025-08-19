@@ -1,9 +1,10 @@
+import logging
 import random
 import numpy as np
 import torch
-from torch import nn
-from torch.nn.functional import softmax
+import pytorch_lightning as pl
 from torch.utils.data import DataLoader, Dataset
+from lightning.pytorch.utilities import rank_zero
 
 
 def add_padding(x):
@@ -49,3 +50,37 @@ class MBSplitter(Dataset):
     def __len__(self):
         return len(self.y)
 
+
+def silence_lightning(level=logging.ERROR):
+    """
+    Suppress PyTorch Lightning info logs like:
+    'GPU available: ...', 'TPU available: ...', and model summaries.
+
+    Args:
+        level: logging level to set (default=logging.ERROR).
+               Use logging.WARNING if you still want warnings.
+    """
+    modules = [
+        "lightning.pytorch",                       # global lightning logs
+        "lightning.pytorch.accelerators.cuda",     # GPU availability
+        "lightning.pytorch.accelerators.tpu",      # TPU availability
+        "lightning.pytorch.accelerators.hpu",      # HPU availability
+    ]
+    for m in modules:
+        logging.getLogger(m).setLevel(level)
+    rank_zero.rank_zero_info = lambda *args, **kwargs: None
+    rank_zero.rank_zero_warn = lambda *args, **kwargs: None
+
+
+class TrainLogging(pl.Callback):
+    def on_train_epoch_end(self, trainer, pl_module):
+        metrics = trainer.callback_metrics
+        train_loss = metrics.get("train_loss", 0.0)
+        val_loss = metrics.get("val_loss", 0.0)
+
+        # Align epoch numbers and losses
+        print(
+            f"Epoch {trainer.current_epoch+1:3d}/{trainer.max_epochs:<3d} | "
+            f"train_loss={train_loss:7.4f} | "
+            f"val_loss={val_loss:7.4f}"
+        )
