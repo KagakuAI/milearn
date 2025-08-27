@@ -1,11 +1,8 @@
 import time
 
-class HoptMixin:
+class StepwiseHopt:
     def hopt(self, x, y, param_grid, verbose=True):
-        """
-        Stepwise greedy hyperparameter optimization with aligned progress and elapsed time
-        printed first, then option value and val_loss.
-        """
+
         best_params = {}
 
         # Count only optimizable options for progress tracking

@@ -8,11 +8,7 @@ from .base import BaseRegressor, BaseClassifier
 from .utils import TrainLogging, silence_and_seed_lightning
 
 class DataModule(pl.LightningDataModule):
-    def __init__(self, x, y=None, batch_size=32, num_workers=0, val_split=0.2):
-        """
-        x: input instances
-        y: labels (optional, if None → inference mode)
-        """
+    def __init__(self, x, y=None, batch_size=128, num_workers=0, val_split=0.2):
         super().__init__()
         self.x = x
         self.y = y

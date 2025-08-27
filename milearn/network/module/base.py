@@ -6,7 +6,7 @@ from torch.nn import Linear, Sigmoid, ReLU, GELU, LeakyReLU, ELU, SiLU, Sequenti
 from torch.utils.data import DataLoader, TensorDataset, random_split
 from pytorch_lightning.callbacks import EarlyStopping
 from .utils import TrainLogging, silence_and_seed_lightning
-from .hopt import HoptMixin
+from .hopt import StepwiseHopt
 
 def add_padding(x):
     bag_size = max(len(i) for i in x)
@@ -146,7 +146,7 @@ class FeatureExtractor:
         return nn.Sequential(*net)
 
 
-class BaseNetwork(pl.LightningModule, HoptMixin):
+class BaseNetwork(pl.LightningModule, StepwiseHopt):
     def __init__(self,
                  hidden_layer_sizes=(256, 128, 64),
                  max_epochs=100,

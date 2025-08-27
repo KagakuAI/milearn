@@ -1,7 +1,7 @@
 import torch
 from torch.nn import Linear
 from .base import BaseNetwork, FeatureExtractor
-from .hopt import HoptMixin
+from .hopt import StepwiseHopt
 
 def apply_instance_dropout(m, p=0.0, training=True):
     if training and p > 0.0:
@@ -9,7 +9,7 @@ def apply_instance_dropout(m, p=0.0, training=True):
         m = m * drop_mask
     return m
 
-class BagNetwork(BaseNetwork, HoptMixin):
+class BagNetwork(BaseNetwork, StepwiseHopt):
     def __init__(self, pool='mean', instance_dropout: float = 0.0, **kwargs):
         super().__init__(**kwargs)
         self.pool = pool
@@ -47,9 +47,9 @@ class BagNetwork(BaseNetwork, HoptMixin):
 
     def hopt(self, x, y, param_grid, verbose=True):
         valid_pools = ['mean', 'max', 'lse']
-        param_grid["pool"] = [i for i in param_grid["pool"] if i in valid_pools]
+        if param_grid.get("pool"):
+            param_grid["pool"] = [i for i in param_grid["pool"] if i in valid_pools]
         return super().hopt(x, y, param_grid, verbose=verbose)
-
 
 
 class InstanceNetwork(BaseNetwork):
@@ -90,7 +90,8 @@ class InstanceNetwork(BaseNetwork):
 
     def hopt(self, x, y, param_grid, verbose=True):
         valid_pools = ['mean', 'max']
-        param_grid["pool"] = [i for i in param_grid["pool"] if i in valid_pools]
+        if param_grid.get("pool"):
+            param_grid["pool"] = [i for i in param_grid["pool"] if i in valid_pools]
         return super().hopt(x, y, param_grid, verbose=verbose)
 
 
