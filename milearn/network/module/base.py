@@ -43,7 +43,7 @@ class DataModule(pl.LightningDataModule):
         self.m = m_tensor
 
         if self.y is not None:
-            y_tensor = torch.tensor(self.y, dtype=torch.float32)
+            y_tensor = torch.tensor(self.y, dtype=torch.float32).view(-1, 1, 1)
             dataset = TensorDataset(x_tensor, y_tensor, m_tensor)
             n_val = int(len(dataset) * self.val_split)
             seed = torch.Generator().manual_seed(42)
@@ -73,7 +73,7 @@ class DataModule(pl.LightningDataModule):
 
 class BaseClassifier:
     def loss(self, y_pred, y_true):
-        total_loss = nn.BCELoss(reduction='mean')(y_pred, y_true.reshape(-1, 1))
+        total_loss = nn.BCELoss(reduction='mean')(y_pred, y_true)
         return total_loss
 
     def prediction(self, out):
@@ -83,33 +83,12 @@ class BaseClassifier:
 
 class BaseRegressor:
     def loss(self, y_pred, y_true):
-        total_loss = nn.MSELoss(reduction='mean')(y_pred, y_true.reshape(-1, 1))
+        total_loss = nn.MSELoss(reduction='mean')(y_pred, y_true)
         return total_loss
 
     def prediction(self, out):
         return out
 
-
-# class FeatureExtractor:
-#     def __new__(cls, hidden_layer_sizes, activation="relu"):
-#         activations = {
-#             "relu": ReLU,
-#             "gelu": GELU,
-#             "leakyrelu": LeakyReLU,
-#             "elu": ELU,
-#             "silu": SiLU,  # also known as Swish
-#         }
-#
-#         act_fn = activations[activation]
-#
-#         inp_dim = hidden_layer_sizes[0]
-#         net = []
-#         for dim in hidden_layer_sizes[1:]:
-#             net.append(Linear(inp_dim, dim))
-#             net.append(act_fn())
-#             inp_dim = dim
-#         net = Sequential(*net)
-#         return net
 
 class FeatureExtractor:
     def __new__(cls, hidden_layer_sizes, activation="relu", dropout: float = 0.0, layer_norm: bool = False):
@@ -119,7 +98,7 @@ class FeatureExtractor:
             "gelu": nn.GELU,
             "leakyrelu": nn.LeakyReLU,
             "elu": nn.ELU,
-            "silu": nn.SiLU,  # also known as Swish
+            "silu": nn.SiLU,
         }
 
         if activation not in activations:

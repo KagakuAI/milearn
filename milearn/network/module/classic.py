@@ -25,6 +25,7 @@ class BagNetwork(BaseNetwork, StepwiseHopt):
         else:
             TypeError(f"Pooling type {self.pool} is not supported.")
             return None
+        bag_embed = bag_embed.unsqueeze(1)
         return bag_embed
 
     def forward(self, X, M):

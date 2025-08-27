@@ -19,7 +19,7 @@ class DataModule(pl.LightningDataModule):
     def setup(self, stage=None):
         x_tensor = torch.tensor(self.x, dtype=torch.float32)
         if self.y is not None:
-            y_tensor = torch.tensor(self.y, dtype=torch.float32)
+            y_tensor = torch.tensor(self.y, dtype=torch.float32).view(-1, 1)
             dataset = TensorDataset(x_tensor, y_tensor)
             n_val = int(len(dataset) * self.val_split)
             seed = torch.Generator().manual_seed(42)

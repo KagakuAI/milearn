@@ -90,6 +90,11 @@ class BagWrapper(BaseEstimator):
             y_pred = self.estimator.predict(bag_embed)
             return y_pred
 
+    def get_bag_embedding(self, x):
+        bag_embed = self._pooling(x)
+        bag_embed = bag_embed[:, None, :] # for consistency
+        return bag_embed
+
 
 class InstanceWrapper(BaseEstimator):
 
@@ -169,3 +174,4 @@ class InstanceWrapper(BaseEstimator):
                 y_pred.append(bag_pred)
             y_pred = np.asarray(y_pred)
             return y_pred
+

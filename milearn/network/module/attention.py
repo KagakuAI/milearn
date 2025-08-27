@@ -35,7 +35,7 @@ class BaseAttentionNetwork(BaseNetwork):
 
         # 3. Compute final bag prediction
         bag_score = self.estimator(bag_embed)
-        bag_pred = self.prediction(bag_score).view(-1, 1)
+        bag_pred = self.prediction(bag_score)
 
         return bag_embed, weights, bag_pred
 
