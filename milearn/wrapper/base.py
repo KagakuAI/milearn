@@ -22,12 +22,6 @@ def probs_to_class(probs):
 
 
 class BagWrapper(BaseEstimator):
-    """
-    Wrapper for bag-level multi-instance learning.
-
-    Aggregates instance features within each bag using a pooling strategy,
-    then fits/predicts using a standard sklearn estimator on the pooled features.
-    """
 
     VALID_POOLS = {'mean', 'max', 'min', 'extreme'}
 
@@ -44,62 +38,66 @@ class BagWrapper(BaseEstimator):
         pool_name = self.pool.__name__ if callable(self.pool) else self.pool.title()
         return f'{self.__class__.__name__}|{self.estimator.__class__.__name__}|{pool_name}Pooling'
 
-    def apply_pool(self, bags):
-        if not isinstance(bags, (list, np.ndarray)):
-            raise ValueError("Input 'bags' should be a list or ndarray of arrays.")
+    def _pooling(self, bags):
 
-        if callable(self.pool):
-            return np.asarray([self.pool(bag) for bag in bags])
-
+        # 1. Compute bag representation
         if self.pool == 'mean':
-            return np.asarray([np.mean(bag, axis=0) for bag in bags])
+            bag_embed = np.asarray([np.mean(bag, axis=0) for bag in bags])
+            return bag_embed
         elif self.pool == 'max':
-            return np.asarray([np.max(bag, axis=0) for bag in bags])
+            bag_embed = np.asarray([np.max(bag, axis=0) for bag in bags])
+            return bag_embed
         elif self.pool == 'min':
-            return np.asarray([np.min(bag, axis=0) for bag in bags])
+            bag_embed = np.asarray([np.min(bag, axis=0) for bag in bags])
+            return bag_embed
         elif self.pool == 'extreme':
             bags_max = np.asarray([np.max(bag, axis=0) for bag in bags])
             bags_min = np.asarray([np.min(bag, axis=0) for bag in bags])
-            return np.concatenate((bags_max, bags_min), axis=1)
+            bag_embed = np.concatenate((bags_max, bags_min), axis=1)
+            return bag_embed
 
         raise RuntimeError("Unknown pooling strategy.")
 
+    def hopt(self):
+        return NotImplementedError
+
     def fit(self, bags, labels):
+
+        # 1. Check if estimator is classifier
         self.is_classifier = hasattr(self.estimator, 'predict_proba')
-        bags_transformed = self.apply_pool(bags)
-        self.estimator.fit(bags_transformed, labels)
+
+        # 2. Compute bag embedding -> transform to single-instance dataset
+        bag_embed = self._pooling(bags)
+
+        # 3. Train estimator
+        self.estimator.fit(bag_embed, labels)
+
         return self
 
     def predict_proba(self, bags):
         if not self.is_classifier:
             raise NotImplementedError("predict_proba is only available for classifiers.")
-        bags_transformed = self.apply_pool(bags)
-        return self.estimator.predict_proba(bags_transformed)
+        bag_embed = self._pooling(bags)
+        y_prob = self.estimator.predict_proba(bag_embed)
+        return y_prob
 
     def predict(self, bags):
         if self.is_classifier:
-            bag_probs = self.predict_proba(bags)
-            return probs_to_class(bag_probs)
+            y_prob = self.predict_proba(bags)
+            return probs_to_class(y_prob)
         else:
-            bags_transformed = self.apply_pool(bags)
-            return self.estimator.predict(bags_transformed)
+            bag_embed = self._pooling(bags)
+            y_pred = self.estimator.predict(bag_embed)
+            return y_pred
 
 
 class InstanceWrapper(BaseEstimator):
-    """
-    Wrapper for instance-level multi-instance learning.
-
-    Flattens all instances from all bags to train/predict an instance-level estimator,
-    then aggregates instance-level predictions into bag-level predictions using pooling.
-    """
 
     VALID_POOLS = {'mean', 'max', 'min'}
 
     def __init__(self, estimator, pool='mean'):
         if not hasattr(estimator, "fit") or not (hasattr(estimator, "predict") or hasattr(estimator, "predict_proba")):
             raise ValueError("Estimator must have a 'fit' and 'predict' or 'predict_proba' method.")
-        if not (pool in self.VALID_POOLS or callable(pool)):
-            raise ValueError(f"Pooling strategy '{pool}' is not supported.")
         self.estimator = estimator
         self.pool = pool
         self.is_classifier = None  # Set during fit()
@@ -108,46 +106,66 @@ class InstanceWrapper(BaseEstimator):
         pool_name = self.pool.__name__ if callable(self.pool) else self.pool.title()
         return f'{self.__class__.__name__}|{self.estimator.__class__.__name__}|{pool_name}Pooling'
 
-    def apply_pool(self, instance_preds):
+    def _pooling(self, inst_pred):
+
+        # 1. Compute instance predictions
+        inst_pred = np.asarray(inst_pred)
+
+        # 2. Apply pooling to instance predictions to get bag prediction
         if callable(self.pool):
-            return self.pool(instance_preds)
+            bag_pred = self.pool(inst_pred)
+            return bag_pred
         elif self.pool == 'mean':
-            return np.mean(instance_preds, axis=0)
+            bag_pred = np.mean(inst_pred, axis=0)
+            return bag_pred
         elif self.pool == 'max':
-            return np.max(instance_preds, axis=0)
+            bag_pred = np.max(inst_pred, axis=0)
+            return bag_pred
         elif self.pool == 'min':
-            return np.min(instance_preds, axis=0)
+            bag_pred = np.min(inst_pred, axis=0)
+            return bag_pred
         else:
             raise ValueError(f"Pooling strategy '{self.pool}' is not recognized.")
 
+    def hopt(self):
+        return NotImplementedError
+
     def fit(self, bags, labels):
+
+        # 1. Check if estimator is classifier
         self.is_classifier = hasattr(self.estimator, 'predict_proba')
-        bags = np.asarray(bags, dtype=object)
-        bags_transformed = np.vstack(bags)
+
+        # 2. Assign each instance the same parent bag label -> transform to single-instance dataset
+        bags_transformed = np.vstack(np.asarray(bags, dtype=object)).astype(np.float32)
         labels_transformed = np.hstack([np.full(len(bag), lb) for bag, lb in zip(bags, labels)])
+
+        # 3. Train estimator
         self.estimator.fit(bags_transformed, labels_transformed)
+
         return self
 
     def predict_proba(self, bags):
         if not self.is_classifier:
             raise NotImplementedError("predict_proba is only available for classifiers.")
-        bag_preds = []
+        y_pred = []
         for bag in bags:
             bag = bag.reshape(-1, bag.shape[-1])
-            instance_preds = self.estimator.predict_proba(bag)
-            bag_pred = self.apply_pool(instance_preds)
-            bag_preds.append(bag_pred)
-        return np.asarray(bag_preds)
+            inst_pred = self.estimator.predict_proba(bag)
+            bag_pred = self._pooling(inst_pred)
+            y_pred.append(bag_pred)
+        y_pred = np.array(y_pred)
+        return y_pred
 
     def predict(self, bags):
         if self.is_classifier:
-            bag_probs = self.predict_proba(bags)
-            return probs_to_class(bag_probs)
+            y_prob = self.predict_proba(bags)
+            return probs_to_class(y_prob)
         else:
-            bag_preds = []
+            y_pred = []
             for bag in bags:
                 bag = bag.reshape(-1, bag.shape[-1])
-                instance_preds = self.estimator.predict(bag)
-                bag_pred = self.apply_pool(instance_preds)
-                bag_preds.append(bag_pred)
-            return np.asarray(bag_preds)
+                inst_pred = self.estimator.predict(bag)
+                bag_pred = self._pooling(inst_pred)
+                y_pred.append(bag_pred)
+            y_pred = np.asarray(y_pred)
+            return y_pred
