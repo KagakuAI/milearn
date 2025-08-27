@@ -3,7 +3,8 @@ import torch.nn.functional as F
 from torch import nn
 from torch.nn import Softmax
 from .base import BaseNetwork, BaseRegressor, FeatureExtractor
-
+from pytorch_lightning import seed_everything
+from .utils import silence_and_seed_lightning
 
 class MarginLoss(nn.Module):
     def __init__(self, m_pos=0.9, m_neg=0.1, alpha=0.5):
@@ -61,8 +62,7 @@ class DynamicPoolingNetwork(BaseNetwork):
     def __init__(self, **kwarhs):
         super().__init__(**kwarhs)
 
-    def _initialize(self, input_layer_size, hidden_layer_sizes):
-        self.extractor = FeatureExtractor((input_layer_size, *hidden_layer_sizes))
+    def _create_specific_layers(self, input_layer_size, hidden_layer_sizes):
         self.pooling = DynamicPooling()
         self.estimator = Norm()
 
@@ -70,7 +70,7 @@ class DynamicPoolingNetwork(BaseNetwork):
         x = self.extractor(x)
         w, s = self.pooling(x, m)
         bag_score = self.estimator(s)
-        return w, bag_score
+        return s, w, bag_score
 
     def predict(self, x):
         y_pred = super().predict(x)

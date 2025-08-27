@@ -2,25 +2,22 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 
-from .module.attention import (AttentionNetwork,
-                                              SelfAttentionNetwork,
-                                              GatedAttentionNetwork,
-                                              MultiHeadAttentionNetwork,
-                                              HopfieldAttentionNetwork)
+from .module.attention import AdditiveAttentionNetwork, SelfAttentionNetwork, HopfieldAttentionNetwork
 
-from .module.attention import TempAttentionNetwork
-
-from .module.base import BaseRegressor
-from .module.utils import add_padding
+from .module.base import BaseRegressor, add_padding
 from .module.dynamic import DynamicPoolingNetwork
 from .module.classic import InstanceNetwork, BagNetwork
 
+class BagNetworkRegressor(BagNetwork, BaseRegressor):
+    def __init__(self, pool='mean', **kwargs):
+        super().__init__(pool=pool, **kwargs)
 
-class AttentionNetworkRegressor(AttentionNetwork, BaseRegressor):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+class InstanceNetworkRegressor(InstanceNetwork, BaseRegressor):
+    def __init__(self, pool='mean', **kwargs):
+        super().__init__(pool=pool, **kwargs)
+        self.pool = pool
 
-class MultiHeadAttentionNetworkRegressor(MultiHeadAttentionNetwork, BaseRegressor):
+class AdditiveAttentionNetworkRegressor(AdditiveAttentionNetwork, BaseRegressor):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -28,30 +25,9 @@ class SelfAttentionNetworkRegressor(SelfAttentionNetwork, BaseRegressor):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-
-class GatedAttentionNetworkRegressor(GatedAttentionNetwork, BaseRegressor):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
 class HopfieldAttentionNetworkRegressor(HopfieldAttentionNetwork, BaseRegressor):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
-class TempAttentionNetworkRegressor(TempAttentionNetwork, BaseRegressor):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-
-class InstanceNetworkRegressor(InstanceNetwork, BaseRegressor):
-    def __init__(self, pool='mean', **kwargs):
-        super().__init__(pool=pool, **kwargs)
-        self.pool = pool
-
-
-class BagNetworkRegressor(BagNetwork, BaseRegressor):
-    def __init__(self, pool='mean', **kwargs):
-        super().__init__(pool=pool, **kwargs)
-
 
 class DynamicPoolingNetworkRegressor(DynamicPoolingNetwork, BaseRegressor):
     def __init__(self, **kwargs):

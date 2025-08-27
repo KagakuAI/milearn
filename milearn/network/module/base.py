@@ -1,12 +1,27 @@
 import torch
+import numpy as np
 import pytorch_lightning as pl
 from torch import nn
-from torch.nn import Sigmoid, Linear, ReLU, Sequential
+from torch.nn import Linear, Sigmoid, ReLU, GELU, LeakyReLU, ELU, SiLU, Sequential
 from torch.utils.data import DataLoader, TensorDataset, random_split
 from pytorch_lightning.callbacks import EarlyStopping
-import numpy as np
-from .utils import add_padding, silence_lightning, TrainLogging
+from .utils import TrainLogging, silence_and_seed_lightning
+from .hopt import HoptMixin
 
+def add_padding(x):
+    bag_size = max(len(i) for i in x)
+    mask = np.ones((len(x), bag_size, 1))
+
+    out = []
+    for i, bag in enumerate(x):
+        bag = np.asarray(bag)
+        if len(bag) < bag_size:
+            mask[i][len(bag):] = 0
+            padding = np.zeros((bag_size - bag.shape[0], bag.shape[1]))
+            bag = np.vstack((bag, padding))
+        out.append(bag)
+    out_bags = np.asarray(out)
+    return out_bags, mask
 
 class DataModule(pl.LightningDataModule):
     def __init__(self, x, y=None, batch_size=32, num_workers=0, val_split=0.2):
@@ -61,9 +76,8 @@ class BaseClassifier:
         total_loss = nn.BCELoss(reduction='mean')(y_pred, y_true.reshape(-1, 1))
         return total_loss
 
-    def get_pred(self, out):
+    def prediction(self, out):
         out = Sigmoid()(out)
-        out = out.view(-1, 1)
         return out
 
 
@@ -72,68 +86,116 @@ class BaseRegressor:
         total_loss = nn.MSELoss(reduction='mean')(y_pred, y_true.reshape(-1, 1))
         return total_loss
 
-    def get_pred(self, out):
-        out = out.view(-1, 1)
+    def prediction(self, out):
         return out
 
 
+# class FeatureExtractor:
+#     def __new__(cls, hidden_layer_sizes, activation="relu"):
+#         activations = {
+#             "relu": ReLU,
+#             "gelu": GELU,
+#             "leakyrelu": LeakyReLU,
+#             "elu": ELU,
+#             "silu": SiLU,  # also known as Swish
+#         }
+#
+#         act_fn = activations[activation]
+#
+#         inp_dim = hidden_layer_sizes[0]
+#         net = []
+#         for dim in hidden_layer_sizes[1:]:
+#             net.append(Linear(inp_dim, dim))
+#             net.append(act_fn())
+#             inp_dim = dim
+#         net = Sequential(*net)
+#         return net
+
 class FeatureExtractor:
-    def __new__(cls, hidden_layer_sizes):
+    def __new__(cls, hidden_layer_sizes, activation="relu", dropout: float = 0.0, layer_norm: bool = False):
+
+        activations = {
+            "relu": nn.ReLU,
+            "gelu": nn.GELU,
+            "leakyrelu": nn.LeakyReLU,
+            "elu": nn.ELU,
+            "silu": nn.SiLU,  # also known as Swish
+        }
+
+        if activation not in activations:
+            raise ValueError(f"Unsupported activation '{activation}'. Choose from {list(activations.keys())}")
+
+        act_fn = activations[activation]
+
         inp_dim = hidden_layer_sizes[0]
         net = []
+
         for dim in hidden_layer_sizes[1:]:
-            net.append(Linear(inp_dim, dim))
-            net.append(ReLU())
+            net.append(nn.Linear(inp_dim, dim))
+
+            if layer_norm:
+                net.append(nn.LayerNorm(dim))
+
+            net.append(act_fn())
+
+            if dropout > 0.0:
+                net.append(nn.Dropout(p=dropout))
+
             inp_dim = dim
-        net = Sequential(*net)
-        return net
+
+        return nn.Sequential(*net)
 
 
-class BaseNetwork(pl.LightningModule):
+class BaseNetwork(pl.LightningModule, HoptMixin):
     def __init__(self,
                  hidden_layer_sizes=(256, 128, 64),
-                 max_epochs=500,
+                 max_epochs=100,
                  batch_size=128,
+                 activation="gelu",
                  learning_rate=0.001,
                  early_stopping=True,
                  weight_decay=0.001,
-                 num_workers=1,
+                 dropout=0.0,
+                 layer_norm=False,
+                 num_workers=4,
                  verbose=False,
-                 accelerator="cpu"):
+                 accelerator="cpu",
+                 random_seed=42):
         super().__init__()
+        self.activation = activation
+        self.dropout = dropout
+        self.layer_norm = layer_norm
         self.save_hyperparameters()
+        silence_and_seed_lightning(seed=random_seed)
 
-        # Build a simple feed-forward backbone
-        layers = []
-        for in_dim, out_dim in zip(
-                (hidden_layer_sizes[:-1]),
-                (hidden_layer_sizes[1:])
-        ):
-            layers.append(nn.Linear(in_dim, out_dim))
-            layers.append(nn.ReLU())
-        layers.append(nn.Linear(hidden_layer_sizes[-1], 1))  # generic head
-        self.model = nn.Sequential(*layers)
+    def _create_basic_layers(self, input_layer_size: int, hidden_layer_sizes: tuple[int, ...]):
 
-    def forward(self, x, m=None):
-        return None, self.model(x)
+        self.extractor = FeatureExtractor((input_layer_size, *hidden_layer_sizes),
+                                          activation=self.hparams.activation,
+                                          dropout=self.hparams.dropout,
+                                          layer_norm=self.hparams.layer_norm)
+        self.estimator = nn.Linear(hidden_layer_sizes[-1], 1)
+
+    def _create_specific_layers(self, input_layer_size: int, hidden_layer_sizes: tuple[int, ...]):
+        return NotImplementedError
 
     def training_step(self, batch, batch_idx):
         x, y, m = batch
-        w_hat, y_hat = self(x, m)
+        b_embed, w_hat, y_hat = self.forward(x, m)
         loss = self.loss(y_hat, y)
         self.log("train_loss", loss, on_step=False, on_epoch=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
         x, y, m = batch
-        w_hat, y_hat = self(x, m)
+        b_embed, w_hat, y_hat = self.forward(x, m)
         loss = self.loss(y_hat, y)
         self.log("val_loss", loss, on_step=False, on_epoch=True)
         return loss
 
     def predict_step(self, batch, batch_idx):
         x, m = batch
-        return self(x, m)
+        return self.forward(x, m)
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(
@@ -146,9 +208,10 @@ class BaseNetwork(pl.LightningModule):
     def fit(self, x, y):
 
         # 1. Initialize network
-        input_layer_size = x[0].shape[-1] # TODO make consistent: x.shape[-1]
-        self._initialize(input_layer_size=input_layer_size,
-                         hidden_layer_sizes=self.hparams.hidden_layer_sizes)
+        self._create_basic_layers(input_layer_size=x[0].shape[-1],
+                                  hidden_layer_sizes=self.hparams.hidden_layer_sizes)
+        self._create_specific_layers(input_layer_size=x[0].shape[-1],
+                                     hidden_layer_sizes=self.hparams.hidden_layer_sizes)
 
         # 2. Prepare data
         datamodule = DataModule(x, y,
@@ -166,8 +229,7 @@ class BaseNetwork(pl.LightningModule):
         if self.hparams.verbose:
             logging_callback = TrainLogging()
             callbacks.append(logging_callback)
-
-        silence_lightning()
+        silence_and_seed_lightning()
 
         # 4. Build trainer
         self._trainer = pl.Trainer(
@@ -185,31 +247,29 @@ class BaseNetwork(pl.LightningModule):
 
         return self
 
-    def predict(self, x):
-
+    def _get_output(self, x):
         datamodule = DataModule(
             x,
             batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers
         )
-
         outputs = self._trainer.predict(self, datamodule=datamodule)
-        y_pred = torch.cat([y for w, y in outputs], dim=0).cpu().numpy().flatten()
+        return outputs, datamodule
 
+    def predict(self, x):
+        outputs, datamodule = self._get_output(x)
+        y_pred = torch.cat([y for b, w, y in outputs], dim=0).cpu().numpy().flatten()
         return y_pred
 
+    def get_bag_embedding(self, x):
+        outputs, datamodule = self._get_output(x)
+        bag_embed = torch.cat([b for b, w, y in outputs], dim=0).cpu().numpy()
+        return bag_embed
 
     def get_instance_weights(self, x):
-
-        datamodule = DataModule(
-            x,
-            batch_size=self.hparams.batch_size,
-            num_workers=self.hparams.num_workers
-        )
-
-        outputs = self._trainer.predict(self, datamodule=datamodule)
-        w_pred = torch.cat([w for w, y in outputs], dim=0)
-        w_pred = w_pred.reshape(w_pred.shape[0], w_pred.shape[-1])
-        w_pred = [np.asarray(i[j.bool().flatten()]) for i, j in zip(w_pred, datamodule.m)] # skip mask predicted weights
-
+        outputs, datamodule = self._get_output(x)
+        w_pred = torch.cat([w for b, w, y in outputs], dim=0)
+        w_pred = [w[m.bool().squeeze(-1)].cpu().numpy() for w, m in zip(w_pred, datamodule.m)] # skip mask predicted weights
         return w_pred
+
+
