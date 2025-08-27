@@ -43,20 +43,18 @@ class BagWrapper(BaseEstimator):
         # 1. Compute bag representation
         if self.pool == 'mean':
             bag_embed = np.asarray([np.mean(bag, axis=0) for bag in bags])
-            return bag_embed
         elif self.pool == 'max':
             bag_embed = np.asarray([np.max(bag, axis=0) for bag in bags])
-            return bag_embed
         elif self.pool == 'min':
             bag_embed = np.asarray([np.min(bag, axis=0) for bag in bags])
-            return bag_embed
         elif self.pool == 'extreme':
             bags_max = np.asarray([np.max(bag, axis=0) for bag in bags])
             bags_min = np.asarray([np.min(bag, axis=0) for bag in bags])
             bag_embed = np.concatenate((bags_max, bags_min), axis=1)
-            return bag_embed
+        else:
+            raise RuntimeError("Unknown pooling strategy.")
 
-        raise RuntimeError("Unknown pooling strategy.")
+        return bag_embed
 
     def hopt(self):
         return NotImplementedError
@@ -119,18 +117,16 @@ class InstanceWrapper(BaseEstimator):
         # 2. Apply pooling to instance predictions to get bag prediction
         if callable(self.pool):
             bag_pred = self.pool(inst_pred)
-            return bag_pred
         elif self.pool == 'mean':
             bag_pred = np.mean(inst_pred, axis=0)
-            return bag_pred
         elif self.pool == 'max':
             bag_pred = np.max(inst_pred, axis=0)
-            return bag_pred
         elif self.pool == 'min':
             bag_pred = np.min(inst_pred, axis=0)
-            return bag_pred
         else:
             raise ValueError(f"Pooling strategy '{self.pool}' is not recognized.")
+
+        return bag_pred
 
     def hopt(self):
         return NotImplementedError

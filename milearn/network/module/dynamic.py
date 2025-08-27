@@ -3,8 +3,6 @@ import torch.nn.functional as F
 from torch import nn
 from torch.nn import Softmax
 from .base import BaseNetwork, BaseRegressor, FeatureExtractor
-from pytorch_lightning import seed_everything
-from .utils import silence_and_seed_lightning
 
 class MarginLoss(nn.Module):
     def __init__(self, m_pos=0.9, m_neg=0.1, alpha=0.5):
@@ -19,19 +17,16 @@ class MarginLoss(nn.Module):
         margin_loss = labels * left + self.alpha * (1. - labels) * right
         return margin_loss.mean()
 
-
 class Norm(nn.Module):
     def forward(self, inputs):
         lengths = torch.norm(inputs, p=2, dim=1, keepdim=True)
         return lengths
-
 
 class Squash(nn.Module):
     def forward(self, inputs):
         norm = torch.norm(inputs, p=2, dim=2, keepdim=True)
         scale = norm ** 2 / (1 + norm ** 2) / (norm + 1e-8)
         return scale * inputs
-
 
 class DynamicPooling(nn.Module):
     def __init__(self, n_iter=3):
@@ -56,7 +51,6 @@ class DynamicPooling(nn.Module):
         s = s.view(s.shape[0], s.shape[-1])
         w = w.view(w.shape[0], w.shape[1])
         return w, s
-
 
 class DynamicPoolingNetwork(BaseNetwork):
     def __init__(self, **kwarhs):

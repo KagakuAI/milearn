@@ -69,6 +69,7 @@ class InstanceNetwork(BaseNetwork):
         else:
             TypeError(f"Pooling type {self.pool} is not supported.")
             return None
+        y_agg = y_agg.unsqueeze(1)
         return y_agg
 
     def forward(self, X, M):
