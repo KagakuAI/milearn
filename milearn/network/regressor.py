@@ -9,13 +9,12 @@ from .module.dynamic import DynamicPoolingNetwork
 from .module.classic import InstanceNetwork, BagNetwork
 
 class BagNetworkRegressor(BagNetwork, BaseRegressor):
-    def __init__(self, pool='mean', **kwargs):
-        super().__init__(pool=pool, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
 class InstanceNetworkRegressor(InstanceNetwork, BaseRegressor):
-    def __init__(self, pool='mean', **kwargs):
-        super().__init__(pool=pool, **kwargs)
-        self.pool = pool
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
 class AdditiveAttentionNetworkRegressor(AdditiveAttentionNetwork, BaseRegressor):
     def __init__(self, **kwargs):
