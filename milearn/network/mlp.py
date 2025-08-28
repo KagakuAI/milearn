@@ -3,9 +3,9 @@ import pytorch_lightning as pl
 from torch.nn import Linear
 from pytorch_lightning.callbacks import EarlyStopping
 from torch.utils.data import DataLoader, TensorDataset, random_split
-from .base import BaseNetwork, FeatureExtractor
-from .base import BaseRegressor, BaseClassifier
-from .utils import TrainLogging, silence_and_seed_lightning
+from milearn.network.module.base import BaseNetwork, FeatureExtractor
+from milearn.network.module.base import BaseRegressor, BaseClassifier
+from milearn.network.module.utils import TrainLogging, silence_and_seed_lightning
 
 class DataModule(pl.LightningDataModule):
     def __init__(self, x, y=None, batch_size=128, num_workers=0, val_split=0.2):
@@ -48,6 +48,7 @@ class DataModule(pl.LightningDataModule):
 class MLPNetwork(BaseNetwork):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        silence_and_seed_lightning(seed=self.hparams.random_seed)
 
     def _create_basic_layers(self, input_layer_size, hidden_layer_sizes):
         self.extractor = FeatureExtractor((input_layer_size, *hidden_layer_sizes))
@@ -112,7 +113,7 @@ class MLPNetwork(BaseNetwork):
         if self.hparams.verbose:
             logging_callback = TrainLogging()
             callbacks.append(logging_callback)
-        silence_and_seed_lightning()
+        silence_and_seed_lightning(seed=self.hparams.random_seed)
 
         # 4. Build trainer
         self._trainer = pl.Trainer(

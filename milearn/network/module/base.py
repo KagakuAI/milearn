@@ -208,7 +208,7 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
         if self.hparams.verbose:
             logging_callback = TrainLogging()
             callbacks.append(logging_callback)
-        silence_and_seed_lightning()
+        silence_and_seed_lightning(seed=self.hparams.random_seed)
 
         # 4. Build trainer
         self._trainer = pl.Trainer(

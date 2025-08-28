@@ -56,8 +56,10 @@ class BagWrapper(BaseEstimator):
 
         return bag_embed
 
-    def hopt(self):
-        return NotImplementedError
+    def hopt(self, x, y, param_grid, verbose=True):
+        if verbose:
+            print("Hyperparameter optimization is not implemented yet. Default parameters are used.")
+        return None
 
     def fit(self, bags, labels):
 
@@ -128,8 +130,10 @@ class InstanceWrapper(BaseEstimator):
 
         return bag_pred
 
-    def hopt(self):
-        return NotImplementedError
+    def hopt(self, x, y, param_grid, verbose=True):
+        if verbose:
+            print("Hyperparameter optimization is not implemented yet. Default parameters are used.")
+        return None
 
     def fit(self, bags, labels):
 

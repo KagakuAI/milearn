@@ -1,4 +1,5 @@
 import time
+import inspect
 
 class StepwiseHopt:
     def hopt(self, x, y, param_grid, verbose=True):
@@ -9,6 +10,9 @@ class StepwiseHopt:
         total_steps = sum(len(v) for v in param_grid.values() if isinstance(v, (list, tuple)))
         current_step = 0
         start_time = time.time()
+
+        # collect constructor args of this class
+        valid_args = inspect.signature(self.__class__.__init__).parameters.keys()
 
         for param, options in param_grid.items():
             # Skip fixed hyperparameters
@@ -24,7 +28,10 @@ class StepwiseHopt:
 
             for val in options:
                 current_params = {**self.hparams, **best_params, param: val}
-                tmp_model = self.__class__(**current_params)
+                # only keep args valid for __init__
+                safe_params = {k: v for k, v in current_params.items() if k in valid_args}
+
+                tmp_model = self.__class__(**safe_params)
                 tmp_model.fit(x, y)
                 loss = float(tmp_model._trainer.callback_metrics["val_loss"])
 
@@ -41,7 +48,7 @@ class StepwiseHopt:
                     best_val = val
 
             best_params[param] = best_val
-            if verbose:
+            if verbose and best_val is not None:
                 print(f"Best {param} = {str(best_val)}, val_loss = {best_loss:.4f}\n")
 
         # Update model hyperparameters
