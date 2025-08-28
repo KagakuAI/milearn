@@ -1,3 +1,4 @@
+import logging
 import torch
 import numpy as np
 import pytorch_lightning as pl
@@ -131,7 +132,7 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
                  max_epochs=100,
                  batch_size=128,
                  activation="gelu",
-                 learning_rate=0.001,
+                 learning_rate=0.0001,
                  early_stopping=True,
                  weight_decay=0.001,
                  dropout=0.0,

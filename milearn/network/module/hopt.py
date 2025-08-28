@@ -50,7 +50,7 @@ class StepwiseHopt:
 
             best_params[param] = best_val
             if verbose and best_val is not None:
-                print(f"Best {param} = {str(best_val)}, val_loss = {best_loss:.4f}\n")
+                print(f"Best {param} = {str(best_val)}, val_loss = {best_loss:.4f}")
 
         # Update model hyperparameters
         self.hparams.update(best_params)

@@ -25,6 +25,7 @@ class BaseAttentionNetwork(BaseNetwork):
             weights = weights / (weights.sum(dim=1, keepdim=True) + 1e-8)
         return weights
 
+
     def forward(self, X, M):
 
         # 1. Compute instance embeddings
