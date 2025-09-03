@@ -1,16 +1,8 @@
 import numpy as np
 from sklearn.base import BaseEstimator
 
-
 def probs_to_class(probs):
-    """
-    Convert probability predictions to class labels.
 
-    Handles different shapes of probability arrays:
-    - 1D array: threshold at 0.5
-    - 2D array with 1 or 2 columns: threshold or argmax
-    - Multi-class: argmax over classes
-    """
     if probs.ndim == 1:
         return (probs > 0.5).astype(int)
     elif probs.shape[1] == 1:
@@ -56,7 +48,7 @@ class BagWrapper(BaseEstimator):
 
         return bag_embed
 
-    def hopt(self, x, y, param_grid, fast=False, n_jobs=1, verbose=True):
+    def hopt(self, x, y, param_grid, n_jobs=1, verbose=True):
         if verbose:
             print("Hyperparameter optimization is not implemented yet. Default parameters are used.")
         return None
@@ -132,7 +124,7 @@ class InstanceWrapper(BaseEstimator):
 
         return bag_pred
 
-    def hopt(self, x, y, param_grid, fast=False, n_jobs=1, verbose=True):
+    def hopt(self, x, y, param_grid, n_jobs=1, verbose=True):
         if verbose:
             print("Hyperparameter optimization is not implemented yet. Default parameters are used.")
         return None

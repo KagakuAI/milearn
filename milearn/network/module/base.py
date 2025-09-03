@@ -63,13 +63,14 @@ class DataModule(pl.LightningDataModule):
         if self.y is None:
             raise ValueError("No labels provided, cannot create val loader")
         return DataLoader(self.val_ds, batch_size=self.batch_size,
-                          num_workers=self.num_workers)
+                          shuffle=False, num_workers=self.num_workers)
 
     # Prediction loader
     def predict_dataloader(self):
         dataset = self.dataset
 
-        return DataLoader(dataset, batch_size=self.batch_size, num_workers=self.num_workers)
+        return DataLoader(dataset, batch_size=self.batch_size,
+                          shuffle=False, num_workers=self.num_workers)
 
 
 class BaseClassifier:
@@ -119,19 +120,27 @@ class FeatureExtractor:
 class BaseNetwork(pl.LightningModule, StepwiseHopt):
     def __init__(self,
                  hidden_layer_sizes=(256, 128, 64),
-                 max_epochs=100,
+                 max_epochs=1000,
                  batch_size=128,
                  activation="gelu",
                  learning_rate=0.001,
                  early_stopping=True,
-                 weight_decay=0.001,
+                 weight_decay=0.0,
                  accelerator="cpu",
                  verbose=False,
                  random_seed=42,
                  num_workers=0):
         super().__init__()
+        self.random_seed = random_seed
         self.save_hyperparameters()
-        silence_and_seed_lightning(seed=random_seed)
+        silence_and_seed_lightning(seed=self.random_seed)
+
+    def _init_weights(self, m):
+        if isinstance(m, nn.Linear):
+            # deterministic Xavier uniform initialization
+            torch.manual_seed(self.random_seed)
+            nn.init.xavier_uniform_(m.weight)
+            nn.init.zeros_(m.bias)
 
     def _create_basic_layers(self, input_layer_size: int, hidden_layer_sizes: tuple[int, ...]):
 
@@ -170,11 +179,14 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
 
     def fit(self, x, y):
 
+        silence_and_seed_lightning(seed=self.random_seed)
+
         # 1. Initialize network
         self._create_basic_layers(input_layer_size=x[0].shape[-1],
                                   hidden_layer_sizes=self.hparams.hidden_layer_sizes)
         self._create_special_layers(input_layer_size=x[0].shape[-1],
                                     hidden_layer_sizes=self.hparams.hidden_layer_sizes)
+        self.apply(self._init_weights)
 
         # 2. Prepare data
         datamodule = DataModule(x, y,
@@ -186,7 +198,7 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
         callbacks = []
         if self.hparams.early_stopping:
             early_stop_callback = EarlyStopping(
-                monitor="val_loss", patience=10, mode="min"
+                monitor="val_loss", patience=20, mode="min"
             )
             callbacks.append(early_stop_callback)
         if self.hparams.verbose:

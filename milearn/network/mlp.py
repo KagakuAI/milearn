@@ -1,11 +1,10 @@
 import torch
 import pytorch_lightning as pl
-from torch.nn import Linear
 from pytorch_lightning.callbacks import EarlyStopping
 from torch.utils.data import DataLoader, TensorDataset, random_split
-from milearn.network.module.base import BaseNetwork, FeatureExtractor
-from milearn.network.module.base import BaseRegressor, BaseClassifier
-from milearn.network.module.utils import TrainLogging, silence_and_seed_lightning
+from .module.base import BaseNetwork
+from .module.base import BaseRegressor, BaseClassifier
+from .module.utils import TrainLogging, silence_and_seed_lightning
 
 class DataModule(pl.LightningDataModule):
     def __init__(self, x, y=None, batch_size=128, num_workers=0, val_split=0.2):
