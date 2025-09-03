@@ -92,7 +92,7 @@ class BaseRegressor:
 
 
 class FeatureExtractor:
-    def __new__(cls, hidden_layer_sizes, activation="relu", dropout: float = 0.0, layer_norm: bool = False):
+    def __new__(cls, hidden_layer_sizes, activation="relu"):
 
         activations = {
             "relu": nn.ReLU,
@@ -106,21 +106,11 @@ class FeatureExtractor:
             raise ValueError(f"Unsupported activation '{activation}'. Choose from {list(activations.keys())}")
 
         act_fn = activations[activation]
-
         inp_dim = hidden_layer_sizes[0]
         net = []
-
         for dim in hidden_layer_sizes[1:]:
             net.append(nn.Linear(inp_dim, dim))
-
-            if layer_norm:
-                net.append(nn.LayerNorm(dim))
-
             net.append(act_fn())
-
-            if dropout > 0.0:
-                net.append(nn.Dropout(p=dropout))
-
             inp_dim = dim
 
         return nn.Sequential(*net)
@@ -132,31 +122,24 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
                  max_epochs=100,
                  batch_size=128,
                  activation="gelu",
-                 learning_rate=0.0001,
+                 learning_rate=0.001,
                  early_stopping=True,
                  weight_decay=0.001,
-                 dropout=0.0,
-                 layer_norm=False,
-                 num_workers=4,
-                 verbose=False,
                  accelerator="cpu",
-                 random_seed=42):
+                 verbose=False,
+                 random_seed=42,
+                 num_workers=0):
         super().__init__()
-        self.activation = activation
-        self.dropout = dropout
-        self.layer_norm = layer_norm
         self.save_hyperparameters()
         silence_and_seed_lightning(seed=random_seed)
 
     def _create_basic_layers(self, input_layer_size: int, hidden_layer_sizes: tuple[int, ...]):
 
         self.extractor = FeatureExtractor((input_layer_size, *hidden_layer_sizes),
-                                          activation=self.hparams.activation,
-                                          dropout=self.hparams.dropout,
-                                          layer_norm=self.hparams.layer_norm)
+                                          activation=self.hparams.activation)
         self.estimator = nn.Linear(hidden_layer_sizes[-1], 1)
 
-    def _create_specific_layers(self, input_layer_size: int, hidden_layer_sizes: tuple[int, ...]):
+    def _create_special_layers(self, input_layer_size: int, hidden_layer_sizes: tuple[int, ...]):
         return NotImplementedError
 
     def training_step(self, batch, batch_idx):
@@ -190,8 +173,8 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
         # 1. Initialize network
         self._create_basic_layers(input_layer_size=x[0].shape[-1],
                                   hidden_layer_sizes=self.hparams.hidden_layer_sizes)
-        self._create_specific_layers(input_layer_size=x[0].shape[-1],
-                                     hidden_layer_sizes=self.hparams.hidden_layer_sizes)
+        self._create_special_layers(input_layer_size=x[0].shape[-1],
+                                    hidden_layer_sizes=self.hparams.hidden_layer_sizes)
 
         # 2. Prepare data
         datamodule = DataModule(x, y,

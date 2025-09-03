@@ -50,10 +50,6 @@ class MLPNetwork(BaseNetwork):
         super().__init__(**kwargs)
         silence_and_seed_lightning(seed=self.hparams.random_seed)
 
-    def _create_basic_layers(self, input_layer_size, hidden_layer_sizes):
-        self.extractor = FeatureExtractor((input_layer_size, *hidden_layer_sizes))
-        self.estimator = Linear(hidden_layer_sizes[-1], 1)
-
     def forward(self, X):
 
         # 1. Compute instance embeddings

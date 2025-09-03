@@ -56,7 +56,7 @@ class BagWrapper(BaseEstimator):
 
         return bag_embed
 
-    def hopt(self, x, y, param_grid, verbose=True):
+    def hopt(self, x, y, param_grid, fast=False, n_jobs=1, verbose=True):
         if verbose:
             print("Hyperparameter optimization is not implemented yet. Default parameters are used.")
         return None
@@ -121,6 +121,8 @@ class InstanceWrapper(BaseEstimator):
             bag_pred = self.pool(inst_pred)
         elif self.pool == 'mean':
             bag_pred = np.mean(inst_pred, axis=0)
+        elif self.pool == 'sum':
+            bag_pred = np.sum(inst_pred, axis=0)
         elif self.pool == 'max':
             bag_pred = np.max(inst_pred, axis=0)
         elif self.pool == 'min':
@@ -130,7 +132,7 @@ class InstanceWrapper(BaseEstimator):
 
         return bag_pred
 
-    def hopt(self, x, y, param_grid, verbose=True):
+    def hopt(self, x, y, param_grid, fast=False, n_jobs=1, verbose=True):
         if verbose:
             print("Hyperparameter optimization is not implemented yet. Default parameters are used.")
         return None

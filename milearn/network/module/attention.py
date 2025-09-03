@@ -11,7 +11,7 @@ class BaseAttentionNetwork(BaseNetwork):
         self.tau = tau
         self.instance_dropout = instance_dropout
 
-    def _create_specific_layers(self, input_layer_size: int, hidden_layer_sizes: tuple[int, ...]):
+    def _create_special_layers(self, input_layer_size: int, hidden_layer_sizes: tuple[int, ...]):
         self._create_attention(hidden_layer_sizes)
 
     def _create_attention(self, hidden_layer_sizes):

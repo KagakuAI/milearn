@@ -56,7 +56,7 @@ class DynamicPoolingNetwork(BaseNetwork):
     def __init__(self, **kwarhs):
         super().__init__(**kwarhs)
 
-    def _create_specific_layers(self, input_layer_size, hidden_layer_sizes):
+    def _create_special_layers(self, input_layer_size, hidden_layer_sizes):
         self.pooling = DynamicPooling()
         self.estimator = Norm()
 

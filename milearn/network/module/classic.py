@@ -18,13 +18,15 @@ class BagNetwork(BaseNetwork, StepwiseHopt):
     def _pooling(self, X, M):
         if self.pool == 'mean':
             bag_embed = X.sum(axis=1) / M.sum(axis=1)
+        elif self.pool == 'sum':
+            bag_embed = X.sum(axis=1)
         elif self.pool == 'max':
             bag_embed = X.max(dim=1)[0]
         elif self.pool == 'lse':
             bag_embed = X.exp().sum(dim=1).log()
         else:
-            TypeError(f"Pooling type {self.pool} is not supported.")
-            return None
+            raise TypeError(f"Pooling type {self.pool} is not supported.")
+
         bag_embed = bag_embed.unsqueeze(1)
         return bag_embed
 
@@ -46,11 +48,11 @@ class BagNetwork(BaseNetwork, StepwiseHopt):
 
         return bag_embed, None, bag_pred
 
-    def hopt(self, x, y, param_grid, verbose=True):
-        valid_pools = ['mean', 'max', 'lse']
+    def hopt(self, x, y, param_grid, fast=False, n_jobs=1,  verbose=True):
+        valid_pools = ['mean', 'sum', 'max', 'lse']
         if param_grid.get("pool"):
             param_grid["pool"] = [i for i in param_grid["pool"] if i in valid_pools]
-        return super().hopt(x, y, param_grid, verbose=verbose)
+        return super().hopt(x, y, param_grid, fast=fast, n_jobs=n_jobs, verbose=verbose)
 
 
 class InstanceNetwork(BaseNetwork):
@@ -63,6 +65,8 @@ class InstanceNetwork(BaseNetwork):
     def _pooling(self, Y, M):
         if self.pool == 'mean':
             y_agg = Y.sum(axis=1) / M.sum(axis=1)
+        elif self.pool == 'sum':
+            y_agg = Y.sum(axis=1)
         elif self.pool == 'max':
             idx = Y.abs().argmax(dim=1, keepdim=True)  # [B, 1, D]
             y_agg = Y.gather(1, idx).squeeze(1)  # [B, D]
@@ -90,11 +94,11 @@ class InstanceNetwork(BaseNetwork):
 
         return None, inst_pred, bag_pred
 
-    def hopt(self, x, y, param_grid, verbose=True):
-        valid_pools = ['mean', 'max']
+    def hopt(self, x, y, param_grid, fast=False, n_jobs=1, verbose=True):
+        valid_pools = ['mean', "sum", 'max']
         if param_grid.get("pool"):
             param_grid["pool"] = [i for i in param_grid["pool"] if i in valid_pools]
-        return super().hopt(x, y, param_grid, verbose=verbose)
+        return super().hopt(x, y, param_grid, fast=fast, n_jobs=n_jobs, verbose=verbose)
 
 
 
