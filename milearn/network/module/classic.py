@@ -48,11 +48,11 @@ class BagNetwork(BaseNetwork, StepwiseHopt):
 
         return bag_embed, None, bag_pred
 
-    def hopt(self, x, y, param_grid, n_jobs=1,  verbose=True):
+    def hopt(self, x, y, param_grid,  verbose=True):
         valid_pools = ['mean', 'sum', 'max', 'lse']
         if param_grid.get("pool"):
             param_grid["pool"] = [i for i in param_grid["pool"] if i in valid_pools]
-        return super().hopt(x, y, param_grid, n_jobs=n_jobs, verbose=verbose)
+        return super().hopt(x, y, param_grid, verbose=verbose)
 
 
 class InstanceNetwork(BaseNetwork):
@@ -94,11 +94,11 @@ class InstanceNetwork(BaseNetwork):
 
         return None, inst_pred, bag_pred
 
-    def hopt(self, x, y, param_grid, n_jobs=1, verbose=True):
+    def hopt(self, x, y, param_grid, verbose=True):
         valid_pools = ['mean', "sum", 'max']
         if param_grid.get("pool"):
             param_grid["pool"] = [i for i in param_grid["pool"] if i in valid_pools]
-        return super().hopt(x, y, param_grid, n_jobs=n_jobs, verbose=verbose)
+        return super().hopt(x, y, param_grid, verbose=verbose)
 
 
 

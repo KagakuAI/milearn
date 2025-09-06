@@ -1,9 +1,18 @@
+import os
 import time
-import numpy as np
-from concurrent.futures import ThreadPoolExecutor
+import torch
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+
+def get_optimal_torch_threads(n_jobs: int) -> int:
+    total_cpus = os.cpu_count() or 1  # fallback to 1 if detection fails
+    return max(1, total_cpus // n_jobs)
 
 class StepwiseHopt:
-    def _evaluate_model(self, cls, hparams, best_params, param, val, x, y):
+    def _evaluate_model(self, cls, hparams, best_params, param, val, x, y, n_jobs):
+
+        # limit torch threads for this trial
+        torch.set_num_threads(get_optimal_torch_threads(n_jobs))
+
         valid_args = set(hparams.keys())
         tmp_params = {**hparams, **best_params, param: val}
         safe_params = {k: v for k, v in tmp_params.items() if k in valid_args}
@@ -18,9 +27,7 @@ class StepwiseHopt:
         loss = float(tmp_model._trainer.callback_metrics["val_loss"])
         return val, loss, epochs_trained, elapsed_model_time
 
-    def hopt(self, x, y, param_grid, n_jobs=8, verbose=True):
-
-        best_params = {}
+    def hopt(self, x, y, param_grid, verbose=True):
 
         # 1. Filter hparams
         valid_args = set(self.hparams.keys())
@@ -33,9 +40,10 @@ class StepwiseHopt:
 
 
         # 3. Start stepwise optimization
+        best_params = {}
         for param, options in filtered_grid.items():
             # 3.1 Add fixed hparams (not list or tuple)
-            if not isinstance(options, (list, tuple)):
+            if not isinstance(options, (list)): # TODO option can be tuple layers size
                 best_params[param] = options
                 continue
 
@@ -46,8 +54,9 @@ class StepwiseHopt:
                 print(f"Optimizing hyperparameter: {param} ({len(options)} options)")
 
             # 3.2 Prepare the list of models
+            n_jobs = len(options)
             args_list = [
-                (self.__class__, self.hparams, best_params, param, val, x, y)
+                (self.__class__, self.hparams, best_params, param, val, x, y, n_jobs)
                 for val in options
             ]
 
@@ -62,7 +71,7 @@ class StepwiseHopt:
                 elapsed_min = model_time / 60.0  # show per-model time in minutes
 
                 if verbose:
-                    print(f"[{current_step}/{total_steps} | {progress_pct:3.1f}% | {elapsed_min:3.1f} min] "
+                    print(f"[{current_step}/{total_steps} | {progress_pct:4.1f}% | {elapsed_min:4.1f} min] "
                           f"Value: {str(val)}, Epochs: {epochs}, Loss: {loss:.4f}")
 
                 if loss < best_loss:

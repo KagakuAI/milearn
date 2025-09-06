@@ -2,9 +2,9 @@ import torch
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping
 from torch.utils.data import DataLoader, TensorDataset, random_split
-from .module.base import BaseNetwork
-from .module.base import BaseRegressor, BaseClassifier
-from .module.utils import TrainLogging, silence_and_seed_lightning
+from milearn.network.module.base import BaseNetwork
+from milearn.network.module.base import BaseRegressor, BaseClassifier
+from milearn.network.module.utils import TrainLogging, silence_and_seed_lightning
 
 class DataModule(pl.LightningDataModule):
     def __init__(self, x, y=None, batch_size=128, num_workers=0, val_split=0.2):
@@ -140,11 +140,19 @@ class MLPNetwork(BaseNetwork):
 
         return y_pred
 
-class MLPNetworkRegressor(MLPNetwork, BaseRegressor):
+class BagWrapperMLPRegressor(MLPNetwork, BaseRegressor):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-class MLPNetworkClassifier(MLPNetwork, BaseClassifier):
+class BagWrapperMLPClassifier(MLPNetwork, BaseClassifier):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+class InstanceWrapperMLPRegressor(MLPNetwork, BaseRegressor):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+class InstanceWrapperMLPClassifier(MLPNetwork, BaseClassifier):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
