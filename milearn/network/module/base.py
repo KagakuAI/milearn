@@ -9,21 +9,6 @@ from pytorch_lightning.callbacks import EarlyStopping
 from .utils import TrainLogging, silence_and_seed_lightning
 from .hopt import StepwiseHopt
 
-def add_padding(x):
-    bag_size = max(len(i) for i in x)
-    mask = np.ones((len(x), bag_size, 1))
-
-    out = []
-    for i, bag in enumerate(x):
-        bag = np.asarray(bag)
-        if len(bag) < bag_size:
-            mask[i][len(bag):] = 0
-            padding = np.zeros((bag_size - bag.shape[0], bag.shape[1]))
-            bag = np.vstack((bag, padding))
-        out.append(bag)
-    out_bags = np.asarray(out)
-    return out_bags, mask
-
 class DataModule(pl.LightningDataModule):
     def __init__(self, x, y=None, batch_size=32, num_workers=0, val_split=0.2):
         """
@@ -37,8 +22,23 @@ class DataModule(pl.LightningDataModule):
         self.num_workers = num_workers
         self.val_split = val_split
 
+    def add_padding(self, x):
+        bag_size = max(len(i) for i in x)
+        mask = np.ones((len(x), bag_size, 1))
+
+        out = []
+        for i, bag in enumerate(x):
+            bag = np.asarray(bag)
+            if len(bag) < bag_size:
+                mask[i][len(bag):] = 0
+                padding = np.zeros((bag_size - bag.shape[0], bag.shape[1]))
+                bag = np.vstack((bag, padding))
+            out.append(bag)
+        out_bags = np.asarray(out)
+        return out_bags, mask
+
     def setup(self, stage=None):
-        x, m = add_padding(self.x)
+        x, m = self.add_padding(self.x)
         x_tensor = torch.tensor(x, dtype=torch.float32)
         m_tensor = torch.tensor(m, dtype=torch.float32)
         self.m = m_tensor
@@ -116,7 +116,6 @@ class FeatureExtractor:
 
         return nn.Sequential(*net)
 
-
 class BaseNetwork(pl.LightningModule, StepwiseHopt):
     def __init__(self,
                  hidden_layer_sizes=(256, 128, 64),
@@ -150,6 +149,37 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
 
     def _create_special_layers(self, input_layer_size: int, hidden_layer_sizes: tuple[int, ...]):
         return NotImplementedError
+
+    def _create_and_fit_trainer(self, datamodule):
+
+        # 1. Trainer configuration
+        callbacks = []
+        if self.hparams.early_stopping:
+            early_stop_callback = EarlyStopping(
+                monitor="val_loss", patience=20, mode="min"
+            )
+            callbacks.append(early_stop_callback)
+        if self.hparams.verbose:
+            logging_callback = TrainLogging()
+            callbacks.append(logging_callback)
+        silence_and_seed_lightning(seed=self.hparams.random_seed)
+
+        # 2. Build trainer
+        self._trainer = pl.Trainer(
+            max_epochs=self.hparams.max_epochs,
+            callbacks=callbacks,
+            accelerator=self.hparams.accelerator,
+            logger=False,
+            enable_model_summary=False,
+            enable_progress_bar=False,
+            enable_checkpointing=False,
+            deterministic=True,
+        )
+
+        # 3. Fit trainer
+        self._trainer.fit(self, datamodule=datamodule)
+
+        return None
 
     def training_step(self, batch, batch_idx):
         x, y, m = batch
@@ -194,31 +224,8 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
                                 num_workers=self.hparams.num_workers,
                                 val_split=0.2)
 
-        # 3. Trainer configuration
-        callbacks = []
-        if self.hparams.early_stopping:
-            early_stop_callback = EarlyStopping(
-                monitor="val_loss", patience=20, mode="min"
-            )
-            callbacks.append(early_stop_callback)
-        if self.hparams.verbose:
-            logging_callback = TrainLogging()
-            callbacks.append(logging_callback)
-        silence_and_seed_lightning(seed=self.hparams.random_seed)
-
-        # 4. Build trainer
-        self._trainer = pl.Trainer(
-            max_epochs=self.hparams.max_epochs,
-            callbacks=callbacks,
-            accelerator=self.hparams.accelerator,
-            logger=False,
-            enable_model_summary=False,
-            enable_progress_bar=False,
-            enable_checkpointing=False,
-            deterministic=True,
-        )
-        # 5. Fit trainer
-        self._trainer.fit(self, datamodule=datamodule)
+        # 3. Create and fit trainer
+        self._create_and_fit_trainer(datamodule)
 
         return self
 

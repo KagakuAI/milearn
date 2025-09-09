@@ -3,8 +3,31 @@ import time
 import torch
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 
+DEFAULT_PARAM_GRID = {
+
+    # Fixed hparams
+    "max_epochs": 5,
+    "early_stopping": True,
+    "accelerator": 'cpu',
+    "random_seed": 42,
+    "verbose": False,
+
+    # Architecture depth/shape
+    "hidden_layer_sizes": [(2048, 1024, 512, 256, 128, 64), (256, 128, 64), (128,)],
+    "activation": ["relu", "leakyrelu", "gelu", "elu", "silu"],
+
+    # Learning dynamics
+    "learning_rate": [10e-5, 10e-4],
+    "batch_size": [32, 64, 128, 256, 512, 1024],
+    "weight_decay": [0.0, 1e-5, 1e-4, 1e-3, 1e-2],
+
+    # MIL specific
+    "tau": [0.01, 0.5, 1.0],
+    "instance_dropout": [0.0, 0.2, 0.4, 0.6, 0.8],
+}
+
 def get_optimal_torch_threads(n_jobs: int) -> int:
-    total_cpus = os.cpu_count() or 1  # fallback to 1 if detection fails
+    total_cpus = os.cpu_count() or 1
     return max(1, total_cpus // n_jobs)
 
 class StepwiseHopt:
@@ -27,7 +50,10 @@ class StepwiseHopt:
         loss = float(tmp_model._trainer.callback_metrics["val_loss"])
         return val, loss, epochs_trained, elapsed_model_time
 
-    def hopt(self, x, y, param_grid, verbose=True):
+    def hopt(self, x, y, param_grid=None, verbose=True):
+
+        if param_grid is None:
+            param_grid = DEFAULT_PARAM_GRID
 
         # 1. Filter hparams
         valid_args = set(self.hparams.keys())
@@ -37,7 +63,6 @@ class StepwiseHopt:
         total_steps = sum(len(v) for v in filtered_grid.values() if isinstance(v, (list, tuple)))
         current_step = 0
         start_time = time.time()
-
 
         # 3. Start stepwise optimization
         best_params = {}

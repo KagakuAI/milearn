@@ -1,10 +1,11 @@
 import torch
+import numpy as np
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import EarlyStopping
 from torch.utils.data import DataLoader, TensorDataset, random_split
 from milearn.network.module.base import BaseNetwork
-from milearn.network.module.base import BaseRegressor, BaseClassifier
-from milearn.network.module.utils import TrainLogging, silence_and_seed_lightning
+from milearn.network.module.utils import silence_and_seed_lightning
+from milearn.network.module.hopt import StepwiseHopt
+
 
 class DataModule(pl.LightningDataModule):
     def __init__(self, x, y=None, batch_size=128, num_workers=0, val_split=0.2):
@@ -78,14 +79,6 @@ class MLPNetwork(BaseNetwork):
         x = batch[0]
         return self.forward(x)
 
-    def configure_optimizers(self):
-        optimizer = torch.optim.AdamW(
-            self.parameters(),
-            lr=self.hparams.learning_rate,
-            weight_decay=self.hparams.weight_decay
-            )
-        return optimizer
-
     def fit(self, x, y):
 
         # 1. Initialize network
@@ -98,31 +91,7 @@ class MLPNetwork(BaseNetwork):
                                 num_workers=self.hparams.num_workers,
                                 val_split=0.2)
 
-        # 3. Trainer configuration
-        callbacks = []
-        if self.hparams.early_stopping:
-            early_stop_callback = EarlyStopping(
-                monitor="val_loss", patience=10, mode="min"
-            )
-            callbacks.append(early_stop_callback)
-        if self.hparams.verbose:
-            logging_callback = TrainLogging()
-            callbacks.append(logging_callback)
-        silence_and_seed_lightning(seed=self.hparams.random_seed)
-
-        # 4. Build trainer
-        self._trainer = pl.Trainer(
-            max_epochs=self.hparams.max_epochs,
-            callbacks=callbacks,
-            accelerator=self.hparams.accelerator,
-            logger=False,
-            enable_model_summary=False,
-            enable_progress_bar=False,
-            enable_checkpointing=False,
-            deterministic=True,
-        )
-        # 5. Fit trainer
-        self._trainer.fit(self, datamodule=datamodule)
+        self._create_and_fit_trainer(datamodule)
 
         return self
 
@@ -140,21 +109,50 @@ class MLPNetwork(BaseNetwork):
 
         return y_pred
 
-class BagWrapperMLPRegressor(MLPNetwork, BaseRegressor):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
 
-class BagWrapperMLPClassifier(MLPNetwork, BaseClassifier):
-    def __init__(self, **kwargs):
+class BagWrapperMLPNetwork(MLPNetwork, StepwiseHopt):
+    def __init__(self, pool="mean", **kwargs):
         super().__init__(**kwargs)
+        self.pool = pool
+        self.save_hyperparameters()
 
-class InstanceWrapperMLPRegressor(MLPNetwork, BaseRegressor):
-    def __init__(self, **kwargs):
+    def fit(self, X, Y):
+        # 1. Compute bag representation
+        if self.pool == 'mean':
+            X = np.asarray([np.mean(bag, axis=0) for bag in X])
+        else:
+            raise RuntimeError("Unknown pooling strategy.")
+        return super().fit(X, Y)
+
+    def predict(self, X):
+        # X = BagTransformer(self.pool).transform(X)
+        return super().predict(X)
+
+class InstanceWrapperMLPNetwork(MLPNetwork, StepwiseHopt):
+    def __init__(self, pool="mean", **kwargs):
         super().__init__(**kwargs)
+        self.pool = pool
+        self.save_hyperparameters()
 
-class InstanceWrapperMLPClassifier(MLPNetwork, BaseClassifier):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        if self.pool == 'mean':
+            pass
+        else:
+            raise ValueError(f"Pooling strategy '{self.pool}' is not recognized.")
 
+    def fit(self, X, Y):
+        # Assign each instance the same parent bag label -> transform to single-instance dataset
+        Y = np.hstack([np.full(len(bag), lb) for bag, lb in zip(X, Y)])
+        X = np.vstack(np.asarray(X, dtype=object)).astype(np.float32)
+        return super().fit(X, Y)
+
+    def predict(self, bags):
+        y_pred = []
+        for bag in bags:
+            bag = bag.reshape(-1, bag.shape[-1])
+            inst_pred = super().predict(bag)
+            bag_pred = np.mean(inst_pred, axis=0)
+            y_pred.append(bag_pred)
+        y_pred = np.asarray(y_pred)
+        return y_pred
 
 
