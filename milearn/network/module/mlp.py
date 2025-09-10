@@ -125,7 +125,10 @@ class BagWrapperMLPNetwork(MLPNetwork, StepwiseHopt):
         return super().fit(X, Y)
 
     def predict(self, X):
-        # X = BagTransformer(self.pool).transform(X)
+        if self.pool == 'mean':
+            X = np.asarray([np.mean(bag, axis=0) for bag in X])
+        else:
+            raise RuntimeError("Unknown pooling strategy.")
         return super().predict(X)
 
 class InstanceWrapperMLPNetwork(MLPNetwork, StepwiseHopt):

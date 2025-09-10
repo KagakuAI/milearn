@@ -1,13 +1,5 @@
-import torch
-from torch.nn import Linear
-from .base import BaseNetwork, FeatureExtractor
+from .base import BaseNetwork, apply_instance_dropout
 from .hopt import StepwiseHopt
-
-def apply_instance_dropout(m, p=0.0, training=True):
-    if training and p > 0.0:
-        drop_mask = (torch.rand_like(m.float()) > p).float()
-        m = m * drop_mask
-    return m
 
 class BagNetwork(BaseNetwork, StepwiseHopt):
     def __init__(self, pool='mean', instance_dropout: float = 0.0, **kwargs):

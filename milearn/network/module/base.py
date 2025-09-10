@@ -255,3 +255,25 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
         return w_pred
 
 
+def apply_instance_dropout(m, p=0.0, training=True):
+
+    if training and p > 0.0:
+        # Drop only real instances
+        drop_mask = torch.ones_like(m, dtype=torch.float)
+        real_mask = (m > 0).float()
+
+        rand_vals = torch.rand_like(m.float())
+        drop_mask = ((rand_vals > p) | (m == 0)).float()  # keep padded = 0, drop real with prob p
+
+        # Ensure at least one real survives per bag
+        real_counts = (real_mask * drop_mask).sum(dim=1, keepdim=True)
+        needs_fix = real_counts == 0
+        if needs_fix.any():
+            # For each bad bag, pick one real instance to restore
+            for i in torch.where(needs_fix.squeeze())[0]:
+                real_indices = torch.where(real_mask[i] > 0)[0]
+                j = real_indices[torch.randint(len(real_indices), (1,))]
+                drop_mask[i, j] = 1.0
+
+        m = m * drop_mask
+    return m

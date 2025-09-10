@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from .base import BaseNetwork, FeatureExtractor
+from .base import BaseNetwork, apply_instance_dropout
 
 class BaseAttentionNetwork(BaseNetwork):
     def __init__(self, tau=1.0, instance_dropout=0.0, **kwargs):
@@ -31,10 +31,14 @@ class BaseAttentionNetwork(BaseNetwork):
         # 1. Compute instance embeddings
         H = self.extractor(X)
 
-        # 2. Compute instance attention weights
+        # 2. Apply instance dropout
+        M = apply_instance_dropout(M, self.instance_dropout, self.training)
+        H = M * H
+
+        # 3. Compute instance attention weights
         bag_embed, weights = self.compute_attention(H, M)
 
-        # 3. Compute final bag prediction
+        # 4. Compute final bag prediction
         bag_score = self.estimator(bag_embed)
         bag_pred = self.prediction(bag_score)
 
@@ -64,10 +68,7 @@ class AdditiveAttentionNetwork(BaseAttentionNetwork):
         # 3. Compute weights
         weights = torch.softmax(logits, dim=1)
 
-        # 4. Apply dropout to attention
-        weights = self._weight_dropout(weights, p=self.instance_dropout, training=self.training)
-
-        # 5. Weighted sum to get bag embedding
+        # 4. Weighted sum to get bag embedding
         bag_embed = torch.sum(weights * H, dim=1, keepdim=True)
 
         return bag_embed, weights
@@ -100,10 +101,7 @@ class SelfAttentionNetwork(BaseAttentionNetwork):
         # 5. Reduce to per-instance / Incoming (who gets attended to)
         weights = weights.mean(dim=1, keepdim=True).transpose(1, 2)  # (B, N, 1)
 
-        # 6. Dropout attention weights
-        weights = self._weight_dropout(weights, self.instance_dropout, self.training)
-
-        # 7. Weighted sum of values -> bag embedding
+        # 6. Weighted sum of values -> bag embedding
         bag_embed = torch.sum(weights * V, dim=1, keepdim=True)  # (B, 1, D)
 
         return bag_embed, weights
@@ -114,7 +112,6 @@ class HopfieldAttentionNetwork(BaseAttentionNetwork):
         self.beta = tau
 
     def _create_attention(self, hidden_layer_sizes):
-
         self.query_vector = nn.Parameter(torch.randn(1, hidden_layer_sizes[-1]))
 
     def compute_attention(self, H, M):
@@ -135,10 +132,7 @@ class HopfieldAttentionNetwork(BaseAttentionNetwork):
         weights = torch.softmax(logits, dim=-1)
         weights = weights.transpose(1, 2)
 
-        # 5. Dropout attention weights
-        weights = self._weight_dropout(weights, self.instance_dropout, self.training)
-
-        # 6. Compute bag embedding
+        # 5. Compute bag embedding
         bag_embed = torch.bmm(weights.transpose(1, 2), H)  # [B, 1, D]
 
         return bag_embed, weights

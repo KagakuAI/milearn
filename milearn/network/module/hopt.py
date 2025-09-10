@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 DEFAULT_PARAM_GRID = {
 
     # Fixed hparams
-    "max_epochs": 5,
+    "max_epochs": 1000,
     "early_stopping": True,
     "accelerator": 'cpu',
     "random_seed": 42,
