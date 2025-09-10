@@ -5,7 +5,6 @@ class BagNetwork(BaseNetwork, StepwiseHopt):
     def __init__(self, pool='mean', instance_dropout: float = 0.0, **kwargs):
         super().__init__(**kwargs)
         self.pool = pool
-        self.instance_dropout = instance_dropout
 
     def _pooling(self, X, M):
         if self.pool == 'mean':
@@ -25,17 +24,17 @@ class BagNetwork(BaseNetwork, StepwiseHopt):
     def forward(self, X, M):
 
         # 1. Compute instance embeddings
-        H = self.extractor(X)
+        inst_embed = self.instance_transformer(X)
 
         # 2. Apply instance dropout and mask
-        M = apply_instance_dropout(M, self.instance_dropout, self.training)
-        H = M * H
+        M = apply_instance_dropout(M, self.hparams.instance_dropout, self.training)
+        inst_embed = M * inst_embed
 
         # 3. Apply pooling and compute bag embedding
-        bag_embed = self._pooling(H, M)
+        bag_embed = self._pooling(inst_embed, M)
 
         # 4. Compute final bag prediction
-        bag_score = self.estimator(bag_embed)
+        bag_score = self.bag_estimator(bag_embed)
         bag_pred = self.prediction(bag_score)
 
         return bag_embed, None, bag_pred
@@ -52,7 +51,6 @@ class InstanceNetwork(BaseNetwork):
     def __init__(self, pool='mean', instance_dropout: float = 0.0, **kwargs):
         super().__init__(**kwargs)
         self.pool = pool
-        self.instance_dropout = instance_dropout
 
     def _pooling(self, Y, M):
         if self.pool == 'mean':
@@ -71,14 +69,14 @@ class InstanceNetwork(BaseNetwork):
     def forward(self, X, M):
 
         # 1. Compute instance embeddings
-        H = self.extractor(X)
+        inst_embed = self.instance_transformer(X)
 
         # 2. Apply instance dropout and mask
-        M = apply_instance_dropout(M, self.instance_dropout, self.training)
-        H = M * H
+        M = apply_instance_dropout(M, self.hparams.instance_dropout, self.training)
+        inst_embed = M * inst_embed
 
         # 3. Compute instance predictions
-        inst_score = self.estimator(H)
+        inst_score = self.bag_estimator(inst_embed)
         inst_pred = self.prediction(inst_score)
 
         # 4. Apply pooling and compute final bag prediction

@@ -53,10 +53,10 @@ class MLPNetwork(BaseNetwork):
     def forward(self, X):
 
         # 1. Compute instance embeddings
-        H = self.extractor(X)
+        H = self.instance_transformer(X)
 
         # 2. Compute final bag prediction
-        y_score = self.estimator(H)
+        y_score = self.bag_estimator(H)
         y_pred = self.prediction(y_score)
 
         return y_pred

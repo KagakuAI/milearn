@@ -3,6 +3,7 @@ import pytorch_lightning as pl
 from pytorch_lightning import seed_everything
 from lightning.pytorch.utilities import rank_zero
 
+
 def silence_and_seed_lightning(seed=42, level=logging.ERROR):
 
     # 1. Silence standard loggers

@@ -30,5 +30,5 @@ class DynamicPoolingNetworkClassifier(DynamicPoolingNetwork, BaseClassifier):
 
     def loss(self, y_pred, y_true):
         margin_loss = MarginLoss()
-        loss = margin_loss(y_pred, y_true.reshape(-1, 1))
+        loss = margin_loss(y_pred, y_true)
         return loss

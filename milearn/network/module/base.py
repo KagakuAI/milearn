@@ -9,12 +9,32 @@ from pytorch_lightning.callbacks import EarlyStopping
 from .utils import TrainLogging, silence_and_seed_lightning
 from .hopt import StepwiseHopt
 
+def apply_instance_dropout(m, p=0.0, training=True):
+
+    if training and p > 0.0:
+        # Drop only real instances
+        drop_mask = torch.ones_like(m, dtype=torch.float)
+        real_mask = (m > 0).float()
+
+        rand_vals = torch.rand_like(m.float())
+        drop_mask = ((rand_vals > p) | (m == 0)).float()  # keep padded = 0, drop real with prob p
+
+        # Ensure at least one real survives per bag
+        real_counts = (real_mask * drop_mask).sum(dim=1, keepdim=True)
+        needs_fix = real_counts == 0
+        if needs_fix.any():
+            # For each bad bag, pick one real instance to restore
+            for i in torch.where(needs_fix.squeeze())[0]:
+                real_indices = torch.where(real_mask[i] > 0)[0]
+                j = real_indices[torch.randint(len(real_indices), (1,))]
+                drop_mask[i, j] = 1.0
+
+        m = m * drop_mask
+    return m
+
 class DataModule(pl.LightningDataModule):
     def __init__(self, x, y=None, batch_size=32, num_workers=0, val_split=0.2):
-        """
-        x: input instances
-        y: labels (optional, if None → inference mode)
-        """
+
         super().__init__()
         self.x = x
         self.y = y
@@ -82,9 +102,8 @@ class BaseClassifier:
         out = Sigmoid()(out)
         return out
 
-
 class BaseRegressor:
-    def loss(self, y_pred, y_true):
+    def loss(self, y_pred, y_true): # TODO add shapes check
         total_loss = nn.MSELoss(reduction='mean')(y_pred, y_true)
         return total_loss
 
@@ -92,7 +111,7 @@ class BaseRegressor:
         return out
 
 
-class FeatureExtractor:
+class InstanceTransformer:
     def __new__(cls, hidden_layer_sizes, activation="relu"):
 
         activations = {
@@ -125,6 +144,7 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
                  learning_rate=0.001,
                  early_stopping=True,
                  weight_decay=0.0,
+                 instance_dropout=0.0,
                  accelerator="cpu",
                  verbose=False,
                  random_seed=42,
@@ -143,9 +163,9 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
 
     def _create_basic_layers(self, input_layer_size: int, hidden_layer_sizes: tuple[int, ...]):
 
-        self.extractor = FeatureExtractor((input_layer_size, *hidden_layer_sizes),
-                                          activation=self.hparams.activation)
-        self.estimator = nn.Linear(hidden_layer_sizes[-1], 1)
+        self.instance_transformer = InstanceTransformer((input_layer_size, *hidden_layer_sizes),
+                                                        activation=self.hparams.activation)
+        self.bag_estimator = nn.Linear(hidden_layer_sizes[-1], 1)
 
     def _create_special_layers(self, input_layer_size: int, hidden_layer_sizes: tuple[int, ...]):
         return NotImplementedError
@@ -254,26 +274,3 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
         w_pred = [w[m.bool().squeeze(-1)].cpu().numpy() for w, m in zip(w_pred, datamodule.m)] # skip mask predicted weights
         return w_pred
 
-
-def apply_instance_dropout(m, p=0.0, training=True):
-
-    if training and p > 0.0:
-        # Drop only real instances
-        drop_mask = torch.ones_like(m, dtype=torch.float)
-        real_mask = (m > 0).float()
-
-        rand_vals = torch.rand_like(m.float())
-        drop_mask = ((rand_vals > p) | (m == 0)).float()  # keep padded = 0, drop real with prob p
-
-        # Ensure at least one real survives per bag
-        real_counts = (real_mask * drop_mask).sum(dim=1, keepdim=True)
-        needs_fix = real_counts == 0
-        if needs_fix.any():
-            # For each bad bag, pick one real instance to restore
-            for i in torch.where(needs_fix.squeeze())[0]:
-                real_indices = torch.where(real_mask[i] > 0)[0]
-                j = real_indices[torch.randint(len(real_indices), (1,))]
-                drop_mask[i, j] = 1.0
-
-        m = m * drop_mask
-    return m
