@@ -9,7 +9,7 @@ DEFAULT_PARAM_GRID = {
     "max_epochs": 1000,
     "early_stopping": True,
     "accelerator": 'cpu',
-    "random_seed": 42,
+    # "random_seed": 42,
     "verbose": False,
 
     # Architecture depth/shape
@@ -18,12 +18,15 @@ DEFAULT_PARAM_GRID = {
 
     # Learning dynamics
     "learning_rate": [10e-5, 10e-4],
-    "batch_size": [32, 64, 128, 256, 512, 1024],
+    "batch_size": [32, 512, 1024],
     "weight_decay": [0.0, 1e-5, 1e-4, 1e-3, 1e-2],
 
     # MIL specific
     "tau": [0.01, 0.5, 1.0],
     "instance_dropout": [0.0, 0.2, 0.4, 0.6, 0.8],
+
+    # Random seed
+    "random_seed": [1, 2, 3, 4, 5],
 }
 
 def get_optimal_torch_threads(n_jobs: int) -> int:

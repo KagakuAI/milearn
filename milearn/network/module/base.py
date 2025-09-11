@@ -9,7 +9,7 @@ from pytorch_lightning.callbacks import EarlyStopping
 from .utils import TrainLogging, silence_and_seed_lightning
 from .hopt import StepwiseHopt
 
-def apply_instance_dropout(m, p=0.0, training=True):
+def instance_dropout(m, p=0.0, training=True):
 
     if training and p > 0.0:
         # Drop only real instances
@@ -33,7 +33,7 @@ def apply_instance_dropout(m, p=0.0, training=True):
     return m
 
 class DataModule(pl.LightningDataModule):
-    def __init__(self, x, y=None, batch_size=32, num_workers=0, val_split=0.2):
+    def __init__(self, x, y=None, batch_size=128, num_workers=0, val_split=0.2):
 
         super().__init__()
         self.x = x
@@ -158,7 +158,7 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
         if isinstance(m, nn.Linear):
             # deterministic Xavier uniform initialization
             torch.manual_seed(self.random_seed)
-            nn.init.xavier_uniform_(m.weight)
+            nn.init.kaiming_uniform_(m.weight, nonlinearity='relu')
             nn.init.zeros_(m.bias)
 
     def _create_basic_layers(self, input_layer_size: int, hidden_layer_sizes: tuple[int, ...]):

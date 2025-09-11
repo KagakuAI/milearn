@@ -1,9 +1,9 @@
 import torch
 from torch import nn
-from .base import BaseNetwork, apply_instance_dropout
+from .base import BaseNetwork, instance_dropout
 
 class BaseAttentionNetwork(BaseNetwork):
-    def __init__(self, tau=1.0, instance_dropout=0.0, **kwargs):
+    def __init__(self, tau=1.0, **kwargs):
         """
         Base class for attention-based MIL networks
         """
@@ -16,17 +16,17 @@ class BaseAttentionNetwork(BaseNetwork):
     def _create_attention(self, hidden_layer_sizes):
         raise NotImplementedError
 
-    def forward(self, X, M):
+    def forward(self, bags, inst_mask):
 
         # 1. Compute instance embeddings
-        inst_embed = self.instance_transformer(X)
+        inst_embed = self.instance_transformer(bags)
 
         # 2. Apply instance dropout
-        M = apply_instance_dropout(M, self.hparams.instance_dropout, self.training)
-        inst_embed = M * inst_embed
+        inst_mask = instance_dropout(inst_mask, self.hparams.instance_dropout, self.training)
+        inst_embed = inst_mask * inst_embed
 
         # 3. Compute instance attention weights
-        bag_embed, inst_weights = self.compute_attention(inst_embed, M)
+        bag_embed, inst_weights = self.compute_attention(inst_embed, inst_mask)
 
         # 4. Compute final bag prediction
         bag_score = self.bag_estimator(bag_embed)
@@ -46,20 +46,20 @@ class AdditiveAttentionNetwork(BaseAttentionNetwork):
             nn.Linear(hidden_layer_sizes[-1], 1)
         )
 
-    def compute_attention(self, H, M):
+    def compute_attention(self, inst_embed, inst_mask):
 
         # 1. Compute logits
-        inst_logits = self.attention(H) / self.tau
+        inst_logits = self.attention(inst_embed) / self.tau
 
         # 2. Mask padded instances
-        mask_bool = M.squeeze(-1).bool()
+        mask_bool = inst_mask.squeeze(-1).bool()
         inst_logits = inst_logits.masked_fill(~mask_bool.unsqueeze(-1), float("-inf"))
 
         # 3. Compute weights
         inst_weights = torch.softmax(inst_logits, dim=1)
 
         # 4. Weighted sum to get bag embedding
-        bag_embed = torch.sum(inst_weights * H, dim=1, keepdim=True)
+        bag_embed = torch.sum(inst_weights * inst_embed, dim=1, keepdim=True)
 
         return bag_embed, inst_weights
 
@@ -71,18 +71,18 @@ class SelfAttentionNetwork(BaseAttentionNetwork):
         self.k_proj = nn.Linear(D, D)
         self.v_proj = nn.Linear(D, D)
 
-    def compute_attention(self, H, M):
+    def compute_attention(self, inst_embed, inst_mask):
 
         # 1. Project to Q, K, V
-        Q = self.q_proj(H)
-        K = self.k_proj(H)
-        V = self.v_proj(H)
+        Q = self.q_proj(inst_embed)
+        K = self.k_proj(inst_embed)
+        V = self.v_proj(inst_embed)
 
         # 2. Compute scaled dot-product attention
-        inst_logits = torch.matmul(Q, K.transpose(1, 2)) / (self.tau * (H.shape[-1] ** 0.5))
+        inst_logits = torch.matmul(Q, K.transpose(1, 2)) / (self.tau * (inst_embed.shape[-1] ** 0.5))
 
         # 3. Mask invalid instances
-        mask_bool = M.squeeze(-1).bool()
+        mask_bool = inst_mask.squeeze(-1).bool()
         inst_logits = inst_logits.masked_fill(~mask_bool.unsqueeze(1), float("-inf"))
 
         # 4. Compute attention weights
@@ -104,18 +104,18 @@ class HopfieldAttentionNetwork(BaseAttentionNetwork):
     def _create_attention(self, hidden_layer_sizes):
         self.query_vector = nn.Parameter(torch.randn(1, hidden_layer_sizes[-1]))
 
-    def compute_attention(self, H, M):
+    def compute_attention(self, inst_embed, inst_mask):
 
-        B, N, D = H.shape
+        B, N, D = inst_embed.shape
 
         # 1. Expand query vector to batch
         q = self.query_vector.unsqueeze(0).expand(B, -1, -1)  # [B, 1, D]
 
         # 2. Compute scores
-        inst_logits = self.beta * torch.bmm(q, H.transpose(1, 2))  # [B, 1, N]
+        inst_logits = self.beta * torch.bmm(q, inst_embed.transpose(1, 2))  # [B, 1, N]
 
         # 3. Mask invalid instances
-        mask_bool = M.squeeze(-1).bool()
+        mask_bool = inst_mask.squeeze(-1).bool()
         inst_logits = inst_logits.masked_fill(~mask_bool.unsqueeze(1), float("-inf"))
 
         # 4. Attention weights
@@ -123,6 +123,6 @@ class HopfieldAttentionNetwork(BaseAttentionNetwork):
         inst_weights = inst_weights.transpose(1, 2)
 
         # 5. Compute bag embedding
-        bag_embed = torch.bmm(inst_weights.transpose(1, 2), H)  # [B, 1, D]
+        bag_embed = torch.bmm(inst_weights.transpose(1, 2), inst_embed)  # [B, 1, D]
 
         return bag_embed, inst_weights

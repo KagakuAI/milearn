@@ -1,8 +1,7 @@
 import torch
-import torch.nn.functional as F
 from torch import nn
-from torch.nn import Softmax
-from .base import InstanceTransformer, BaseNetwork, apply_instance_dropout
+import torch.nn.functional as F
+from .base import BaseNetwork, instance_dropout
 
 class MarginLoss(nn.Module):
     def __init__(self, m_pos=0.9, m_neg=0.1, alpha=0.5):
@@ -73,13 +72,13 @@ class DynamicPoolingNetwork(BaseNetwork):
     def _create_special_layers(self, input_layer_size, hidden_layer_sizes):
         self.dynamic_pooling = DynamicPooling()
 
-    def forward(self, x, inst_mask):
+    def forward(self, bags, inst_mask):
 
         # 1. Compute instance embeddings
-        inst_embed = self.instance_transformer(x)
+        inst_embed = self.instance_transformer(bags)
 
         # 2. Apply instance dropout and mask
-        inst_mask = apply_instance_dropout(inst_mask, self.hparams.instance_dropout, self.training)
+        inst_mask = instance_dropout(inst_mask, self.hparams.instance_dropout, self.training)
         inst_embed = inst_mask * inst_embed
 
         # 3. Compute bag embedding and instance weights
