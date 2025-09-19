@@ -9,7 +9,6 @@ Key Features
 - Traditional and neural network-based MIL algorithms (regression and classification)
 - Integrated stepwise model hyperparameter optimization
 
-
 Installation
 ------------
 
@@ -18,6 +17,7 @@ Installation
 
 Quick Start
 -----------
+
 .. code-block:: python
     from milearn.data.mnist import load_mnist, create_bags_reg
     from milearn.preprocessing import BagMinMaxScaler
@@ -46,8 +46,9 @@ Quick Start
     y_pred = model.predict(x_test_scaled) # predicted labels
     w_pred = model.get_instance_weights(x_test_scaled) # predicted instance weights
 
-Quick Start
+Tutorials
 -----------
+
 Several examples of the ``milearn`` application to the classification/regression problem and key instance detection 
 for the MNIST dataset can be found in `notebooks <notebooks>`_ .
 
