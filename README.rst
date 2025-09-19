@@ -18,34 +18,33 @@ Installation
 
 Quick Start
 -----------
-```python
-from milearn.data.mnist import load_mnist, create_bags_reg
-from milearn.preprocessing import BagMinMaxScaler
-from sklearn.model_selection import train_test_split
-from milearn.network.module.hopt import DEFAULT_PARAM_GRID
-from milearn.network.regressor import DynamicPoolingNetworkRegressor
+.. code-block:: python
+    from milearn.data.mnist import load_mnist, create_bags_reg
+    from milearn.preprocessing import BagMinMaxScaler
+    from sklearn.model_selection import train_test_split
+    from milearn.network.module.hopt import DEFAULT_PARAM_GRID
+    from milearn.network.regressor import DynamicPoolingNetworkRegressor
 
-# 1. Create MNIST regression dataset
-data, targets = load_mnist()
-bags, labels, key = create_bags_reg(data, targets, bag_size=10, num_bags=10000,
-                                    bag_agg="mean", random_state=42)
+    # 1. Create MNIST regression dataset
+    data, targets = load_mnist()
+    bags, labels, key = create_bags_reg(data, targets, bag_size=10, num_bags=10000,
+                                        bag_agg="mean", random_state=42)
 
-# 2. Train/test split and scale features
-x_train, x_test, y_train, y_test, key_train, key_test = train_test_split(bags, labels, key, random_state=42)
-scaler = BagMinMaxScaler()
-scaler.fit(x_train)
-x_train_scaled = scaler.transform(x_train)
-x_test_scaled = scaler.transform(x_test)
+    # 2. Train/test split and scale features
+    x_train, x_test, y_train, y_test, key_train, key_test = train_test_split(bags, labels, key, random_state=42)
+    scaler = BagMinMaxScaler()
+    scaler.fit(x_train)
+    x_train_scaled = scaler.transform(x_train)
+    x_test_scaled = scaler.transform(x_test)
 
-# 3. Train model
-model = DynamicPoolingNetworkRegressor()
-model.hopt(x_train_scaled, y_train, param_grid=DEFAULT_PARAM_GRID, verbose=True) # recomended for small datasets only
-model.fit(x_train_scaled, y_train)
+    # 3. Train model
+    model = DynamicPoolingNetworkRegressor()
+    model.hopt(x_train_scaled, y_train, param_grid=DEFAULT_PARAM_GRID, verbose=True) # recomended for small datasets only
+    model.fit(x_train_scaled, y_train)
 
-# 4. Get predictions
-y_pred = model.predict(x_test_scaled) # predicted labels
-w_pred = model.get_instance_weights(x_test_scaled) # predicted instance weights
-```
+    # 4. Get predictions
+    y_pred = model.predict(x_test_scaled) # predicted labels
+    w_pred = model.get_instance_weights(x_test_scaled) # predicted instance weights
 
 Quick Start
 -----------
