@@ -85,8 +85,7 @@ class DynamicPoolingNetwork(BaseNetwork):
         bag_embed, inst_weights = self.dynamic_pooling(inst_embed, inst_mask)
 
         # 4. Compute final bag prediction
-        bag_score = self.bag_estimator(bag_embed)
-        bag_pred = self.prediction(bag_score)
+        bag_pred = self.bag_estimator(bag_embed)
 
         return bag_embed, inst_weights, bag_pred
 

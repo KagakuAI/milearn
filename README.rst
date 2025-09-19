@@ -41,7 +41,8 @@ Quick Start
 
     # 3. Train model
     model = DynamicPoolingNetworkRegressor()
-    model.hopt(x_train_scaled, y_train, param_grid=DEFAULT_PARAM_GRID, verbose=True) # recomended for small datasets only
+    model.hopt(x_train_scaled, y_train, # recomended for small datasets only
+               param_grid=DEFAULT_PARAM_GRID, verbose=True)
     model.fit(x_train_scaled, y_train)
 
     # 4. Get predictions
