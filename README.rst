@@ -13,12 +13,14 @@ Installation
 ------------
 
 .. code-block:: bash
+
     pip install milearn
 
 Quick Start
 -----------
 
 .. code-block:: python
+
     from milearn.data.mnist import load_mnist, create_bags_reg
     from milearn.preprocessing import BagMinMaxScaler
     from sklearn.model_selection import train_test_split
