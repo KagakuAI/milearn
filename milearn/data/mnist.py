@@ -126,7 +126,13 @@ def create_bags_xor(data, targets, bag_size=10, num_bags=1000, key_digits=(3, 7)
 
     return bags, bag_labels, key_indices_per_bag
 
-def create_bags_sum(data, targets, bag_size=5, num_bags=1000, random_state=42):
+def create_bags_reg(data, targets, bag_size=5, num_bags=1000, bag_agg="mean", random_state=42):
+    if bag_agg == "mean":
+        agg_func = np.mean
+    elif bag_agg == "sum":
+        agg_func = np.sum
+    else:
+        TypeError("Unknown value for bag_agg: {}".format(bag_agg))
 
     rng = np.random.RandomState(random_state)
 
@@ -140,7 +146,7 @@ def create_bags_sum(data, targets, bag_size=5, num_bags=1000, random_state=42):
         selected_indices = rng.choice(indices, size=bag_size, replace=False)
         bag = data[selected_indices]
         digits = targets[selected_indices]
-        label = np.sum(digits)
+        label = agg_func(digits)
 
         bags.append(bag)
         labels.append(label.item())

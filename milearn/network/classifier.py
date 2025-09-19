@@ -2,6 +2,7 @@ from .module.attention import AdditiveAttentionNetwork, SelfAttentionNetwork, Ho
 from .module.base import BaseClassifier
 from .module.dynamic import DynamicPoolingNetwork, MarginLoss
 from .module.classic import BagNetwork, InstanceNetwork
+from .module.mlp import BagWrapperMLPNetwork, InstanceWrapperMLPNetwork
 
 class BagNetworkClassifier(BagNetwork, BaseClassifier):
 
@@ -21,6 +22,14 @@ class SelfAttentionNetworkClassifier(SelfAttentionNetwork, BaseClassifier):
         super().__init__(**kwargs)
 
 class HopfieldAttentionNetworkClassifier(HopfieldAttentionNetwork, BaseClassifier):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+class BagWrapperMLPNetworkClassifier(BagWrapperMLPNetwork, BaseClassifier):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+class InstanceWrapperMLPNetworkClassifier(InstanceWrapperMLPNetwork, BaseClassifier):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 

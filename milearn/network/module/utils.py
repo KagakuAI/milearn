@@ -36,6 +36,6 @@ class TrainLogging(pl.Callback):
         # Align epoch numbers and losses
         print(
             f"Epoch {trainer.current_epoch+1:3d}/{trainer.max_epochs:<3d} | "
-            f"train_loss={train_loss:7.3f} | "
-            f"val_loss={val_loss:7.3f}"
+            f"train_loss={train_loss:5.3f} | "
+            f"val_loss={val_loss:5.3f}"
         )

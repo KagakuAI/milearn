@@ -92,7 +92,6 @@ class DataModule(pl.LightningDataModule):
         return DataLoader(dataset, batch_size=self.batch_size,
                           shuffle=False, num_workers=self.num_workers)
 
-
 class BaseClassifier:
     def loss(self, y_pred, y_true):
         total_loss = nn.BCELoss(reduction='mean')(y_pred, y_true)
@@ -176,7 +175,7 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
         callbacks = []
         if self.hparams.early_stopping:
             early_stop_callback = EarlyStopping(
-                monitor="val_loss", patience=20, mode="min"
+                monitor="val_loss", patience=10, mode="min"
             )
             callbacks.append(early_stop_callback)
         if self.hparams.verbose:

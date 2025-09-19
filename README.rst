@@ -1,55 +1,54 @@
-``milearn``: A General-Purpose Multi-Instance Learning Toolkit
+``milearn``: Multi-instance machine learning in Python
 ==========================================================
 
-``milearn`` is a flexible Python toolkit for building and evaluating models using **Multi-Instance Learning (MIL)**. 
-It is designed for general-purpose use in machine learning applications where data is structured as bags of instances with only bag-level supervision.
+``milearn`` is designed to mimic the scikit-learn interface to simplify its usage and integration with other tools.
 
 Key Features
 ------------
 
-- 🧠 Varieties of traditional, upgraded, and neural network-based supervised learning algorithms
-- 🔎 Key instance detection with model-based and model-agnostic approaches
-- ⚙️ Scikit-learn compatible API for easy integration
+- Traditional and neural network-based MIL algorithms (regression and classification)
+- Integrated stepwise model hyperparameter optimization
 
-What is Multi-Instance Learning?
---------------------------------
-
-In **Multi-Instance Learning (MIL)**, data is grouped into **bags**, each containing multiple **instances** 
-(e.g., data points, documents, image patches). Only the **bag** has a label — not the individual instances.
-
-**Example:**
-
-- An email (bag) is labeled spam if **at least one sentence (instance)** is spammy
-- A video (bag) is labeled as violent if **at least one frame (instance)** shows violence
-- A document (bag) is classified as toxic based on certain **key phrases** (instances)
-- A molecule (bag) is represented by its **conformers** or **fragments** (instances)
-- A biological sequence (bag) is broken into **subsequences** of RNA, DNA, or protein domains (instances)
 
 Installation
 ------------
 
-Install directly from GitHub:
-
 .. code-block:: bash
-
-    # Create and activate a new conda environment
-    conda create -n milearn python=3.9 -y
-    conda activate milearn
-
-    # Install directly from GitHub
-    pip install git+https://github.com/KagakuAI/milearn.git
-
-The installed ``milearn`` environment can then be added to the Jupyter platform:
-
-.. code-block:: bash
-
-    conda install ipykernel
-    python -m ipykernel install --user --name milearn --display-name "milearn"
-
+    pip install milearn
 
 Quick Start
 -----------
+```python
+from milearn.data.mnist import load_mnist, create_bags_reg
+from milearn.preprocessing import BagMinMaxScaler
+from sklearn.model_selection import train_test_split
+from milearn.network.module.hopt import DEFAULT_PARAM_GRID
+from milearn.network.regressor import DynamicPoolingNetworkRegressor
 
+# 1. Create MNIST regression dataset
+data, targets = load_mnist()
+bags, labels, key = create_bags_reg(data, targets, bag_size=10, num_bags=10000,
+                                    bag_agg="mean", random_state=42)
+
+# 2. Train/test split and scale features
+x_train, x_test, y_train, y_test, key_train, key_test = train_test_split(bags, labels, key, random_state=42)
+scaler = BagMinMaxScaler()
+scaler.fit(x_train)
+x_train_scaled = scaler.transform(x_train)
+x_test_scaled = scaler.transform(x_test)
+
+# 3. Train model
+model = DynamicPoolingNetworkRegressor()
+model.hopt(x_train_scaled, y_train, param_grid=DEFAULT_PARAM_GRID, verbose=True) # recomended for small datasets only
+model.fit(x_train_scaled, y_train)
+
+# 4. Get predictions
+y_pred = model.predict(x_test_scaled) # predicted labels
+w_pred = model.get_instance_weights(x_test_scaled) # predicted instance weights
+```
+
+Quick Start
+-----------
 Several examples of the ``milearn`` application to the classification/regression problem and key instance detection 
-for the MNIST dataset can be found in `tutorials <tutorials>`_ .
+for the MNIST dataset can be found in `notebooks <notebooks>`_ .
 
