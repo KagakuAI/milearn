@@ -1,12 +1,12 @@
 import logging
+
 import pytorch_lightning as pl
-from pytorch_lightning import seed_everything
 from lightning.pytorch.utilities import rank_zero
+from pytorch_lightning import seed_everything
 
 
 def silence_and_seed_lightning(seed=42, level=logging.ERROR):
-    """
-    Silence PyTorch Lightning logs and set random seeds for reproducibility.
+    """Silence PyTorch Lightning logs and set random seeds for reproducibility.
 
     This function:
       1. Reduces verbosity of Lightning loggers.
@@ -39,16 +39,15 @@ def silence_and_seed_lightning(seed=42, level=logging.ERROR):
 
 
 class TrainLogging(pl.Callback):
-    """
-    PyTorch Lightning callback to log training and validation loss per epoch.
+    """PyTorch Lightning callback to log training and validation loss per
+    epoch.
 
     Prints a formatted message at the end of each training epoch:
         Epoch <current>/<max> | train_loss=<value> | val_loss=<value>
     """
 
     def on_train_epoch_end(self, trainer, pl_module):
-        """
-        Called at the end of each training epoch to log losses.
+        """Called at the end of each training epoch to log losses.
 
         Args:
             trainer (pl.Trainer): the current PyTorch Lightning trainer.

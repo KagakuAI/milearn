@@ -1,17 +1,18 @@
-import logging
-import torch
+
 import numpy as np
 import pytorch_lightning as pl
-from torch import nn
-from torch.nn import Linear, Sigmoid, ReLU, GELU, LeakyReLU, ELU, SiLU, Sequential
-from torch.utils.data import DataLoader, TensorDataset, random_split
+import torch
 from pytorch_lightning.callbacks import EarlyStopping
-from .utils import TrainLogging, silence_and_seed_lightning
+from torch import nn
+from torch.nn import Sigmoid
+from torch.utils.data import DataLoader, TensorDataset, random_split
+
 from .hopt import StepwiseHopt
+from .utils import TrainLogging, silence_and_seed_lightning
+
 
 def instance_dropout(m, p=0.0, training=True):
-    """
-    Apply instance-level dropout with optional mask fixing.
+    """Apply instance-level dropout with optional mask fixing.
 
     Args:
         m (torch.Tensor): instance mask (B, N)
@@ -45,8 +46,7 @@ def instance_dropout(m, p=0.0, training=True):
 
 class DataModule(pl.LightningDataModule):
     def __init__(self, x, y=None, batch_size=128, num_workers=0, val_split=0.2):
-        """
-        Data module for bagged input with padding and splitting.
+        """Data module for bagged input with padding and splitting.
 
         Args:
             x (list[np.ndarray]): list of bags, each bag is an array of instances
@@ -63,8 +63,7 @@ class DataModule(pl.LightningDataModule):
         self.val_split = val_split
 
     def add_padding(self, x):
-        """
-        Pad bags to the same size and create mask.
+        """Pad bags to the same size and create mask.
 
         Args:
             x (list[np.ndarray]): list of bags
@@ -81,7 +80,7 @@ class DataModule(pl.LightningDataModule):
         for i, bag in enumerate(x):
             bag = np.asarray(bag)
             if len(bag) < bag_size:
-                mask[i][len(bag):] = 0
+                mask[i][len(bag) :] = 0
                 padding = np.zeros((bag_size - bag.shape[0], bag.shape[1]))
                 bag = np.vstack((bag, padding))
             out.append(bag)
@@ -89,8 +88,7 @@ class DataModule(pl.LightningDataModule):
         return out_bags, mask
 
     def setup(self, stage=None):
-        """
-        Prepare datasets with optional train/val split.
+        """Prepare datasets with optional train/val split.
 
         Args:
             stage (str | None): stage name ("fit", "validate", "predict", etc.)
@@ -105,13 +103,12 @@ class DataModule(pl.LightningDataModule):
             dataset = TensorDataset(x_tensor, y_tensor, m_tensor)
             n_val = int(len(dataset) * self.val_split)
             seed = torch.Generator().manual_seed(42)
-            self.train_ds, self.val_ds = random_split(dataset, [len(dataset)-n_val, n_val], generator=seed)
+            self.train_ds, self.val_ds = random_split(dataset, [len(dataset) - n_val, n_val], generator=seed)
         else:
             self.dataset = TensorDataset(x_tensor, m_tensor)
 
     def train_dataloader(self):
-        """
-        Get training dataloader.
+        """Get training dataloader.
 
         Returns:
             DataLoader: training dataloader
@@ -121,12 +118,10 @@ class DataModule(pl.LightningDataModule):
         """
         if self.y is None:
             raise ValueError("No labels provided, cannot create train loader")
-        return DataLoader(self.train_ds, batch_size=self.batch_size,
-                          shuffle=True, num_workers=self.num_workers)
+        return DataLoader(self.train_ds, batch_size=self.batch_size, shuffle=True, num_workers=self.num_workers)
 
     def val_dataloader(self):
-        """
-        Get validation dataloader.
+        """Get validation dataloader.
 
         Returns:
             DataLoader: validation dataloader
@@ -136,25 +131,21 @@ class DataModule(pl.LightningDataModule):
         """
         if self.y is None:
             raise ValueError("No labels provided, cannot create val loader")
-        return DataLoader(self.val_ds, batch_size=self.batch_size,
-                          shuffle=False, num_workers=self.num_workers)
+        return DataLoader(self.val_ds, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers)
 
     def predict_dataloader(self):
-        """
-        Get prediction dataloader.
+        """Get prediction dataloader.
 
         Returns:
             DataLoader: prediction dataloader
         """
         dataset = self.dataset
-        return DataLoader(dataset, batch_size=self.batch_size,
-                          shuffle=False, num_workers=self.num_workers)
+        return DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers)
 
 
 class BaseClassifier:
     def loss(self, y_pred, y_true):
-        """
-        Compute binary cross-entropy loss.
+        """Compute binary cross-entropy loss.
 
         Args:
             y_pred (torch.Tensor): predicted values
@@ -163,12 +154,11 @@ class BaseClassifier:
         Returns:
             torch.Tensor: BCE loss
         """
-        total_loss = nn.BCELoss(reduction='mean')(y_pred, y_true)
+        total_loss = nn.BCELoss(reduction="mean")(y_pred, y_true)
         return total_loss
 
     def prediction(self, out):
-        """
-        Apply sigmoid to raw outputs.
+        """Apply sigmoid to raw outputs.
 
         Args:
             out (torch.Tensor): raw outputs
@@ -182,8 +172,7 @@ class BaseClassifier:
 
 class BaseRegressor:
     def loss(self, y_pred, y_true):
-        """
-        Compute mean squared error loss.
+        """Compute mean squared error loss.
 
         Args:
             y_pred (torch.Tensor): predicted values
@@ -192,12 +181,11 @@ class BaseRegressor:
         Returns:
             torch.Tensor: MSE loss
         """
-        total_loss = nn.MSELoss(reduction='mean')(y_pred, y_true)
+        total_loss = nn.MSELoss(reduction="mean")(y_pred, y_true)
         return total_loss
 
     def prediction(self, out):
-        """
-        Identity prediction for regression.
+        """Identity prediction for regression.
 
         Args:
             out (torch.Tensor): raw outputs
@@ -210,8 +198,7 @@ class BaseRegressor:
 
 class InstanceTransformer:
     def __new__(cls, hidden_layer_sizes, activation="relu"):
-        """
-        Create a feed-forward transformer for instances.
+        """Create a feed-forward transformer for instances.
 
         Args:
             hidden_layer_sizes (tuple[int, ...]): layer sizes (input_dim, hidden_dims...)
@@ -243,21 +230,22 @@ class InstanceTransformer:
 
 
 class BaseNetwork(pl.LightningModule, StepwiseHopt):
-    def __init__(self,
-                 hidden_layer_sizes=(256, 128, 64),
-                 max_epochs=1000,
-                 batch_size=128,
-                 activation="gelu",
-                 learning_rate=0.001,
-                 early_stopping=True,
-                 weight_decay=0.0,
-                 instance_dropout=0.0,
-                 accelerator="cpu",
-                 verbose=False,
-                 random_seed=42,
-                 num_workers=0):
-        """
-        Base network class with training utilities.
+    def __init__(
+        self,
+        hidden_layer_sizes=(256, 128, 64),
+        max_epochs=1000,
+        batch_size=128,
+        activation="gelu",
+        learning_rate=0.001,
+        early_stopping=True,
+        weight_decay=0.0,
+        instance_dropout=0.0,
+        accelerator="cpu",
+        verbose=False,
+        random_seed=42,
+        num_workers=0,
+    ):
+        """Base network class with training utilities.
 
         Args:
             hidden_layer_sizes (tuple[int, ...]): hidden layer sizes
@@ -279,8 +267,7 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
         silence_and_seed_lightning(seed=self.random_seed)
 
     def _init_weights(self, m):
-        """
-        Initialize weights deterministically.
+        """Initialize weights deterministically.
 
         Args:
             m (nn.Module): module to initialize
@@ -288,24 +275,23 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
         if isinstance(m, nn.Linear):
             # deterministic Xavier uniform initialization
             torch.manual_seed(self.random_seed)
-            nn.init.kaiming_uniform_(m.weight, nonlinearity='relu')
+            nn.init.kaiming_uniform_(m.weight, nonlinearity="relu")
             nn.init.zeros_(m.bias)
 
     def _create_basic_layers(self, input_layer_size: int, hidden_layer_sizes: tuple[int, ...]):
-        """
-        Create instance transformer and bag estimator.
+        """Create instance transformer and bag estimator.
 
         Args:
             input_layer_size (int): input dimension
             hidden_layer_sizes (tuple[int, ...]): hidden layer sizes
         """
-        self.instance_transformer = InstanceTransformer((input_layer_size, *hidden_layer_sizes),
-                                                        activation=self.hparams.activation)
+        self.instance_transformer = InstanceTransformer(
+            (input_layer_size, *hidden_layer_sizes), activation=self.hparams.activation
+        )
         self.bag_estimator = nn.Linear(hidden_layer_sizes[-1], 1)
 
     def _create_special_layers(self, input_layer_size: int, hidden_layer_sizes: tuple[int, ...]):
-        """
-        Placeholder for special layers in subclasses.
+        """Placeholder for special layers in subclasses.
 
         Args:
             input_layer_size (int): input dimension
@@ -317,8 +303,7 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
         return NotImplementedError
 
     def _create_and_fit_trainer(self, datamodule):
-        """
-        Create and fit a PyTorch Lightning trainer.
+        """Create and fit a PyTorch Lightning trainer.
 
         Args:
             datamodule (DataModule): datamodule for training
@@ -326,9 +311,7 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
         # 1. Trainer configuration
         callbacks = []
         if self.hparams.early_stopping:
-            early_stop_callback = EarlyStopping(
-                monitor="val_loss", patience=10, mode="min"
-            )
+            early_stop_callback = EarlyStopping(monitor="val_loss", patience=10, mode="min")
             callbacks.append(early_stop_callback)
         if self.hparams.verbose:
             logging_callback = TrainLogging()
@@ -353,8 +336,7 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
         return None
 
     def training_step(self, batch, batch_idx):
-        """
-        Training step.
+        """Training step.
 
         Args:
             batch (tuple): (x, y, mask)
@@ -370,8 +352,7 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        """
-        Validation step.
+        """Validation step.
 
         Args:
             batch (tuple): (x, y, mask)
@@ -387,8 +368,7 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
         return loss
 
     def predict_step(self, batch, batch_idx):
-        """
-        Prediction step.
+        """Prediction step.
 
         Args:
             batch (tuple): (x, mask)
@@ -401,22 +381,18 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
         return self.forward(x, m)
 
     def configure_optimizers(self):
-        """
-        Configure optimizer.
+        """Configure optimizer.
 
         Returns:
             torch.optim.Optimizer: AdamW optimizer
         """
         optimizer = torch.optim.AdamW(
-            self.parameters(),
-            lr=self.hparams.learning_rate,
-            weight_decay=self.hparams.weight_decay
-            )
+            self.parameters(), lr=self.hparams.learning_rate, weight_decay=self.hparams.weight_decay
+        )
         return optimizer
 
     def fit(self, x, y):
-        """
-        Fit the model.
+        """Fit the model.
 
         Args:
             x (list[np.ndarray]): input bags
@@ -428,17 +404,14 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
         silence_and_seed_lightning(seed=self.random_seed)
 
         # 1. Initialize network
-        self._create_basic_layers(input_layer_size=x[0].shape[-1],
-                                  hidden_layer_sizes=self.hparams.hidden_layer_sizes)
-        self._create_special_layers(input_layer_size=x[0].shape[-1],
-                                    hidden_layer_sizes=self.hparams.hidden_layer_sizes)
+        self._create_basic_layers(input_layer_size=x[0].shape[-1], hidden_layer_sizes=self.hparams.hidden_layer_sizes)
+        self._create_special_layers(input_layer_size=x[0].shape[-1], hidden_layer_sizes=self.hparams.hidden_layer_sizes)
         self.apply(self._init_weights)
 
         # 2. Prepare data
-        datamodule = DataModule(x, y,
-                                batch_size=self.hparams.batch_size,
-                                num_workers=self.hparams.num_workers,
-                                val_split=0.2)
+        datamodule = DataModule(
+            x, y, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, val_split=0.2
+        )
 
         # 3. Create and fit trainer
         self._create_and_fit_trainer(datamodule)
@@ -446,8 +419,7 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
         return self
 
     def _get_output(self, x):
-        """
-        Run prediction with datamodule.
+        """Run prediction with datamodule.
 
         Args:
             x (list[np.ndarray]): input bags
@@ -455,17 +427,12 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
         Returns:
             tuple: (outputs, datamodule)
         """
-        datamodule = DataModule(
-            x,
-            batch_size=self.hparams.batch_size,
-            num_workers=self.hparams.num_workers
-        )
+        datamodule = DataModule(x, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers)
         outputs = self._trainer.predict(self, datamodule=datamodule)
         return outputs, datamodule
 
     def predict(self, x):
-        """
-        Predict bag-level outputs.
+        """Predict bag-level outputs.
 
         Args:
             x (list[np.ndarray]): input bags
@@ -478,8 +445,7 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
         return y_pred
 
     def get_bag_embedding(self, x):
-        """
-        Get bag embeddings.
+        """Get bag embeddings.
 
         Args:
             x (list[np.ndarray]): input bags
@@ -492,8 +458,7 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
         return bag_embed
 
     def get_instance_weights(self, x):
-        """
-        Get instance attention weights.
+        """Get instance attention weights.
 
         Args:
             x (list[np.ndarray]): input bags
@@ -503,5 +468,7 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
         """
         outputs, datamodule = self._get_output(x)
         w_pred = torch.cat([w for b, w, y in outputs], dim=0)
-        w_pred = [w[m.bool().squeeze(-1)].cpu().numpy() for w, m in zip(w_pred, datamodule.m)] # skip mask predicted weights
+        w_pred = [
+            w[m.bool().squeeze(-1)].cpu().numpy() for w, m in zip(w_pred, datamodule.m)
+        ]  # skip mask predicted weights
         return w_pred

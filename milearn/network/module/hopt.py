@@ -1,37 +1,33 @@
 import os
 import time
+from concurrent.futures import ThreadPoolExecutor
+
 import torch
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 
 DEFAULT_PARAM_GRID = {
     # Fixed hparams
     "max_epochs": 1000,
     "early_stopping": True,
-    "accelerator": 'cpu',
+    "accelerator": "cpu",
     # "random_seed": 42,
     "verbose": False,
-
     # Architecture depth/shape
     "hidden_layer_sizes": [(2048, 1024, 512, 256, 128, 64), (256, 128, 64), (128,)],
     "activation": ["relu", "leakyrelu", "gelu", "elu", "silu"],
-
     # Learning dynamics
     "learning_rate": [10e-5, 10e-4],
     "batch_size": [32, 512, 1024],
     "weight_decay": [0.0, 1e-5, 1e-4, 1e-3, 1e-2],
-
     # MIL specific
     "tau": [0.01, 0.5, 1.0],
     "instance_dropout": [0.0, 0.2, 0.4, 0.6, 0.8],
-
     # Random seed
     "random_seed": [1, 2, 3, 4, 5],
 }
 
 
 def get_optimal_torch_threads(n_jobs: int) -> int:
-    """
-    Get optimal number of torch threads for parallel jobs.
+    """Get optimal number of torch threads for parallel jobs.
 
     Args:
         n_jobs (int): number of parallel jobs.
@@ -44,13 +40,10 @@ def get_optimal_torch_threads(n_jobs: int) -> int:
 
 
 class StepwiseHopt:
-    """
-    Stepwise hyperparameter optimization.
-    """
+    """Stepwise hyperparameter optimization."""
 
     def _evaluate_model(self, cls, hparams, best_params, param, val, x, y, n_jobs):
-        """
-        Train and evaluate a model for a given hyperparameter setting.
+        """Train and evaluate a model for a given hyperparameter setting.
 
         Args:
             cls (type): model class.
@@ -81,8 +74,7 @@ class StepwiseHopt:
         return val, loss, epochs_trained, elapsed_model_time
 
     def hopt(self, x, y, param_grid=None, verbose=True):
-        """
-        Perform stepwise hyperparameter optimization.
+        """Perform stepwise hyperparameter optimization.
 
         Args:
             x (list | np.ndarray): input data.
@@ -110,16 +102,13 @@ class StepwiseHopt:
                 continue
 
             best_val = None
-            best_loss = float('inf')
+            best_loss = float("inf")
 
             if verbose:
                 print(f"Optimizing hyperparameter: {param} ({len(options)} options)")
 
             n_jobs = len(options)
-            args_list = [
-                (self.__class__, self.hparams, best_params, param, val, x, y, n_jobs)
-                for val in options
-            ]
+            args_list = [(self.__class__, self.hparams, best_params, param, val, x, y, n_jobs) for val in options]
 
             with ThreadPoolExecutor(max_workers=n_jobs) as executor:
                 results = list(executor.map(lambda args: self._evaluate_model(*args), args_list))
@@ -130,8 +119,10 @@ class StepwiseHopt:
                 elapsed_min = model_time / 60.0
 
                 if verbose:
-                    print(f"[{current_step}/{total_steps} | {progress_pct:4.1f}% | {elapsed_min:4.1f} min] "
-                          f"Value: {str(val)}, Epochs: {epochs}, Loss: {loss:.4f}")
+                    print(
+                        f"[{current_step}/{total_steps} | {progress_pct:4.1f}% | {elapsed_min:4.1f} min] "
+                        f"Value: {str(val)}, Epochs: {epochs}, Loss: {loss:.4f}"
+                    )
 
                 if loss < best_loss:
                     best_loss = loss

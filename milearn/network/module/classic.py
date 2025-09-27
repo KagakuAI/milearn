@@ -1,15 +1,13 @@
 from .base import BaseNetwork, instance_dropout
 from .hopt import StepwiseHopt
 
-class BagNetwork(BaseNetwork, StepwiseHopt):
-    """
-    A neural network model for multiple-instance learning (MIL)
-    that aggregates instance embeddings into bag-level representations.
-    """
 
-    def __init__(self, pool='mean', **kwargs):
-        """
-        Initialize BagNetwork.
+class BagNetwork(BaseNetwork, StepwiseHopt):
+    """A neural network model for multiple-instance learning (MIL) that
+    aggregates instance embeddings into bag-level representations."""
+
+    def __init__(self, pool="mean", **kwargs):
+        """Initialize BagNetwork.
 
         Args:
             pool (str): pooling method, one of ['mean', 'sum', 'max', 'lse'].
@@ -19,8 +17,7 @@ class BagNetwork(BaseNetwork, StepwiseHopt):
         self.pool = pool
 
     def _pooling(self, bags, inst_mask):
-        """
-        Apply pooling over instance embeddings to create bag embeddings.
+        """Apply pooling over instance embeddings to create bag embeddings.
 
         Args:
             bags (torch.Tensor): instance embeddings.
@@ -29,13 +26,13 @@ class BagNetwork(BaseNetwork, StepwiseHopt):
         Returns:
             torch.Tensor: bag-level embeddings.
         """
-        if self.pool == 'mean':
+        if self.pool == "mean":
             bag_embed = bags.sum(axis=1) / inst_mask.sum(axis=1)
-        elif self.pool == 'sum':
+        elif self.pool == "sum":
             bag_embed = bags.sum(axis=1)
-        elif self.pool == 'max':
+        elif self.pool == "max":
             bag_embed = bags.max(dim=1)[0]
-        elif self.pool == 'lse':
+        elif self.pool == "lse":
             bag_embed = bags.exp().sum(dim=1).log()
         else:
             raise TypeError(f"Pooling type {self.pool} is not supported.")
@@ -44,8 +41,7 @@ class BagNetwork(BaseNetwork, StepwiseHopt):
         return bag_embed
 
     def forward(self, bags, inst_mask):
-        """
-        Forward pass of BagNetwork.
+        """Forward pass of BagNetwork.
 
         Args:
             bags (torch.Tensor): input bags of instances.
@@ -63,9 +59,8 @@ class BagNetwork(BaseNetwork, StepwiseHopt):
 
         return bag_embed, None, bag_pred
 
-    def hopt(self, x, y, param_grid,  verbose=False):
-        """
-        Hyperparameter optimization with support for pooling methods.
+    def hopt(self, x, y, param_grid, verbose=False):
+        """Hyperparameter optimization with support for pooling methods.
 
         Args:
             x (list): input bags.
@@ -76,21 +71,18 @@ class BagNetwork(BaseNetwork, StepwiseHopt):
         Returns:
             object: optimization results from StepwiseHopt.
         """
-        valid_pools = ['mean', 'sum', 'max', 'lse']
+        valid_pools = ["mean", "sum", "max", "lse"]
         if param_grid.get("pool"):
             param_grid["pool"] = [i for i in param_grid["pool"] if i in valid_pools]
         return super().hopt(x, y, param_grid, verbose=verbose)
 
 
 class InstanceNetwork(BaseNetwork):
-    """
-    A neural network model for multiple-instance learning (MIL)
-    that aggregates predictions at the instance level.
-    """
+    """A neural network model for multiple-instance learning (MIL) that
+    aggregates predictions at the instance level."""
 
-    def __init__(self, pool='mean', **kwargs):
-        """
-        Initialize InstanceNetwork.
+    def __init__(self, pool="mean", **kwargs):
+        """Initialize InstanceNetwork.
 
         Args:
             pool (str): pooling method, one of ['mean', 'sum', 'max'].
@@ -100,8 +92,7 @@ class InstanceNetwork(BaseNetwork):
         self.pool = pool
 
     def _pooling(self, inst_pred, inst_mask):
-        """
-        Apply pooling over instance predictions to create bag predictions.
+        """Apply pooling over instance predictions to create bag predictions.
 
         Args:
             inst_pred (torch.Tensor): predictions for instances.
@@ -110,11 +101,11 @@ class InstanceNetwork(BaseNetwork):
         Returns:
             torch.Tensor: bag-level predictions.
         """
-        if self.pool == 'mean':
+        if self.pool == "mean":
             bag_pred = inst_pred.sum(axis=1) / inst_mask.sum(axis=1)
-        elif self.pool == 'sum':
+        elif self.pool == "sum":
             bag_pred = inst_pred.sum(axis=1)
-        elif self.pool == 'max':
+        elif self.pool == "max":
             idx = inst_pred.abs().argmax(dim=1, keepdim=True)
             bag_pred = inst_pred.gather(1, idx).squeeze(1)
         else:
@@ -124,8 +115,7 @@ class InstanceNetwork(BaseNetwork):
         return bag_pred
 
     def forward(self, bags, inst_mask):
-        """
-        Forward pass of InstanceNetwork.
+        """Forward pass of InstanceNetwork.
 
         Args:
             bags (torch.Tensor): input bags of instances.
@@ -144,8 +134,7 @@ class InstanceNetwork(BaseNetwork):
         return None, None, bag_pred
 
     def hopt(self, x, y, param_grid, verbose=True):
-        """
-        Hyperparameter optimization with support for pooling methods.
+        """Hyperparameter optimization with support for pooling methods.
 
         Args:
             x (list): input bags.
@@ -156,7 +145,7 @@ class InstanceNetwork(BaseNetwork):
         Returns:
             object: optimization results from StepwiseHopt.
         """
-        valid_pools = ['mean', "sum", 'max']
+        valid_pools = ["mean", "sum", "max"]
         if param_grid.get("pool"):
             param_grid["pool"] = [i for i in param_grid["pool"] if i in valid_pools]
         return super().hopt(x, y, param_grid, verbose=verbose)

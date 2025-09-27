@@ -1,16 +1,15 @@
 import torch
-from torch import nn
 import torch.nn.functional as F
+from torch import nn
+
 from .base import BaseNetwork, instance_dropout
 
+
 class MarginLoss(nn.Module):
-    """
-    Margin loss for capsule-like models.
-    """
+    """Margin loss for capsule-like models."""
 
     def __init__(self, m_pos=0.9, m_neg=0.1, alpha=0.5):
-        """
-        Initialize MarginLoss.
+        """Initialize MarginLoss.
 
         Args:
             m_pos (float): positive margin threshold.
@@ -23,8 +22,7 @@ class MarginLoss(nn.Module):
         self.alpha = alpha
 
     def forward(self, lengths, labels):
-        """
-        Compute margin loss.
+        """Compute margin loss.
 
         Args:
             lengths (torch.Tensor): predicted lengths (probabilities).
@@ -35,18 +33,15 @@ class MarginLoss(nn.Module):
         """
         left = F.relu(self.m_pos - lengths, inplace=True) ** 2
         right = F.relu(lengths - self.m_neg, inplace=True) ** 2
-        margin_loss = labels * left + self.alpha * (1. - labels) * right
+        margin_loss = labels * left + self.alpha * (1.0 - labels) * right
         return margin_loss.mean()
 
 
 class Squash(nn.Module):
-    """
-    Squashing nonlinearity for capsule-like networks.
-    """
+    """Squashing nonlinearity for capsule-like networks."""
 
     def forward(self, bag_embed):
-        """
-        Apply squash function.
+        """Apply squash function.
 
         Args:
             bag_embed (torch.Tensor): bag embeddings.
@@ -55,18 +50,15 @@ class Squash(nn.Module):
             torch.Tensor: squashed embeddings.
         """
         norm = torch.norm(bag_embed, p=2, dim=2, keepdim=True)
-        scale = norm ** 2 / (1 + norm ** 2) / (norm + 1e-8)
+        scale = norm**2 / (1 + norm**2) / (norm + 1e-8)
         return scale * bag_embed
 
 
 class Norm(nn.Module):
-    """
-    Compute L2 norm of bag embeddings.
-    """
+    """Compute L2 norm of bag embeddings."""
 
     def forward(self, bag_squash):
-        """
-        Compute norm.
+        """Compute norm.
 
         Args:
             bag_squash (torch.Tensor): squashed embeddings.
@@ -78,13 +70,10 @@ class Norm(nn.Module):
 
 
 class DynamicPooling(nn.Module):
-    """
-    Dynamic routing-based pooling layer for multiple-instance learning.
-    """
+    """Dynamic routing-based pooling layer for multiple-instance learning."""
 
     def __init__(self, n_iter=3):
-        """
-        Initialize DynamicPooling.
+        """Initialize DynamicPooling.
 
         Args:
             n_iter (int): number of routing iterations.
@@ -93,8 +82,7 @@ class DynamicPooling(nn.Module):
         self.n_iter = n_iter
 
     def forward(self, inst_embed, inst_mask):
-        """
-        Apply dynamic pooling.
+        """Apply dynamic pooling.
 
         Args:
             inst_embed (torch.Tensor): instance embeddings.
@@ -118,13 +106,10 @@ class DynamicPooling(nn.Module):
 
 
 class DynamicPoolingNetwork(BaseNetwork):
-    """
-    A dynamic pooling-based multiple-instance learning network.
-    """
+    """A dynamic pooling-based multiple-instance learning network."""
 
     def __init__(self, **kwargs):
-        """
-        Initialize DynamicPoolingNetwork.
+        """Initialize DynamicPoolingNetwork.
 
         Args:
             **kwargs: additional arguments for BaseNetwork.
@@ -132,8 +117,7 @@ class DynamicPoolingNetwork(BaseNetwork):
         super().__init__(**kwargs)
 
     def _create_basic_layers(self, input_layer_size: int, hidden_layer_sizes: tuple[int, ...]):
-        """
-        Create basic layers for the network.
+        """Create basic layers for the network.
 
         Args:
             input_layer_size (int): size of input features.
@@ -143,8 +127,7 @@ class DynamicPoolingNetwork(BaseNetwork):
         self.bag_estimator = Norm()
 
     def _create_special_layers(self, input_layer_size, hidden_layer_sizes):
-        """
-        Create dynamic pooling layer.
+        """Create dynamic pooling layer.
 
         Args:
             input_layer_size (int): size of input features.
@@ -153,8 +136,7 @@ class DynamicPoolingNetwork(BaseNetwork):
         self.dynamic_pooling = DynamicPooling()
 
     def forward(self, bags, inst_mask):
-        """
-        Forward pass of DynamicPoolingNetwork.
+        """Forward pass of DynamicPoolingNetwork.
 
         Args:
             bags (torch.Tensor): input bags of instances.

@@ -1,20 +1,18 @@
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 
-from .module.attention import AdditiveAttentionNetwork, SelfAttentionNetwork, HopfieldAttentionNetwork
+from .module.attention import AdditiveAttentionNetwork, HopfieldAttentionNetwork, SelfAttentionNetwork
 from .module.base import BaseRegressor
+from .module.classic import BagNetwork, InstanceNetwork
 from .module.dynamic import DynamicPoolingNetwork
-from .module.classic import InstanceNetwork, BagNetwork
 from .module.mlp import BagWrapperMLPNetwork, InstanceWrapperMLPNetwork
 
 
 class BagNetworkRegressor(BagNetwork, BaseRegressor):
-    """
-    Bag-level network with mean/sum/max pooling for regression tasks.
-    """
+    """Bag-level network with mean/sum/max pooling for regression tasks."""
+
     def __init__(self, **kwargs):
-        """
-        Initialize BagNetworkRegressor.
+        """Initialize BagNetworkRegressor.
 
         Args:
             **kwargs: additional arguments for BagNetwork.
@@ -23,12 +21,11 @@ class BagNetworkRegressor(BagNetwork, BaseRegressor):
 
 
 class InstanceNetworkRegressor(InstanceNetwork, BaseRegressor):
-    """
-    Instance-level network with per-instance predictions pooled to bag-level for regression.
-    """
+    """Instance-level network with per-instance predictions pooled to bag-level
+    for regression."""
+
     def __init__(self, **kwargs):
-        """
-        Initialize InstanceNetworkRegressor.
+        """Initialize InstanceNetworkRegressor.
 
         Args:
             **kwargs: additional arguments for InstanceNetwork.
@@ -37,12 +34,10 @@ class InstanceNetworkRegressor(InstanceNetwork, BaseRegressor):
 
 
 class AdditiveAttentionNetworkRegressor(AdditiveAttentionNetwork, BaseRegressor):
-    """
-    Additive attention network adapted for regression tasks.
-    """
+    """Additive attention network adapted for regression tasks."""
+
     def __init__(self, **kwargs):
-        """
-        Initialize AdditiveAttentionNetworkRegressor.
+        """Initialize AdditiveAttentionNetworkRegressor.
 
         Args:
             **kwargs: additional arguments for AdditiveAttentionNetwork.
@@ -51,12 +46,10 @@ class AdditiveAttentionNetworkRegressor(AdditiveAttentionNetwork, BaseRegressor)
 
 
 class SelfAttentionNetworkRegressor(SelfAttentionNetwork, BaseRegressor):
-    """
-    Self-attention network adapted for regression tasks.
-    """
+    """Self-attention network adapted for regression tasks."""
+
     def __init__(self, **kwargs):
-        """
-        Initialize SelfAttentionNetworkRegressor.
+        """Initialize SelfAttentionNetworkRegressor.
 
         Args:
             **kwargs: additional arguments for SelfAttentionNetwork.
@@ -65,12 +58,10 @@ class SelfAttentionNetworkRegressor(SelfAttentionNetwork, BaseRegressor):
 
 
 class HopfieldAttentionNetworkRegressor(HopfieldAttentionNetwork, BaseRegressor):
-    """
-    Hopfield-style attention network adapted for regression tasks.
-    """
+    """Hopfield-style attention network adapted for regression tasks."""
+
     def __init__(self, **kwargs):
-        """
-        Initialize HopfieldAttentionNetworkRegressor.
+        """Initialize HopfieldAttentionNetworkRegressor.
 
         Args:
             **kwargs: additional arguments for HopfieldAttentionNetwork.
@@ -79,12 +70,10 @@ class HopfieldAttentionNetworkRegressor(HopfieldAttentionNetwork, BaseRegressor)
 
 
 class BagWrapperMLPNetworkRegressor(BagWrapperMLPNetwork, BaseRegressor):
-    """
-    MLP network with bag-level pooling for regression tasks.
-    """
+    """MLP network with bag-level pooling for regression tasks."""
+
     def __init__(self, **kwargs):
-        """
-        Initialize BagWrapperMLPNetworkRegressor.
+        """Initialize BagWrapperMLPNetworkRegressor.
 
         Args:
             **kwargs: additional arguments for BagWrapperMLPNetwork.
@@ -93,12 +82,11 @@ class BagWrapperMLPNetworkRegressor(BagWrapperMLPNetwork, BaseRegressor):
 
 
 class InstanceWrapperMLPNetworkRegressor(InstanceWrapperMLPNetwork, BaseRegressor):
-    """
-    MLP network with instance-level predictions pooled to bag-level for regression tasks.
-    """
+    """MLP network with instance-level predictions pooled to bag-level for
+    regression tasks."""
+
     def __init__(self, **kwargs):
-        """
-        Initialize InstanceWrapperMLPNetworkRegressor.
+        """Initialize InstanceWrapperMLPNetworkRegressor.
 
         Args:
             **kwargs: additional arguments for InstanceWrapperMLPNetwork.
@@ -107,13 +95,14 @@ class InstanceWrapperMLPNetworkRegressor(InstanceWrapperMLPNetwork, BaseRegresso
 
 
 class DynamicPoolingNetworkRegressor(DynamicPoolingNetwork, BaseRegressor):
+    """Dynamic pooling network adapted for regression tasks.
+
+    Performs Min-Max scaling on target values during training and
+    inverse transforms predictions.
     """
-    Dynamic pooling network adapted for regression tasks.
-    Performs Min-Max scaling on target values during training and inverse transforms predictions.
-    """
+
     def __init__(self, **kwargs):
-        """
-        Initialize DynamicPoolingNetworkRegressor.
+        """Initialize DynamicPoolingNetworkRegressor.
 
         Args:
             **kwargs: additional arguments for DynamicPoolingNetwork.
@@ -121,8 +110,7 @@ class DynamicPoolingNetworkRegressor(DynamicPoolingNetwork, BaseRegressor):
         super().__init__(**kwargs)
 
     def fit(self, x, y):
-        """
-        Fit the network on training data with scaled target values.
+        """Fit the network on training data with scaled target values.
 
         Args:
             x (list or array-like): Input bags.
@@ -138,8 +126,7 @@ class DynamicPoolingNetworkRegressor(DynamicPoolingNetwork, BaseRegressor):
         return super().fit(x, y)
 
     def predict(self, x):
-        """
-        Predict target values for input bags and inverse transform scaling.
+        """Predict target values for input bags and inverse transform scaling.
 
         Args:
             x (list or array-like): Input bags.

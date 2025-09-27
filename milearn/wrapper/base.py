@@ -1,9 +1,9 @@
 import numpy as np
 from sklearn.base import BaseEstimator
 
+
 def probs_to_class(probs):
-    """
-    Convert probability predictions to class labels.
+    """Convert probability predictions to class labels.
 
     Handles different shapes:
     - 1D array: threshold 0.5
@@ -28,17 +28,16 @@ def probs_to_class(probs):
 
 
 class BagWrapper(BaseEstimator):
-    """
-    Wrapper for bag-level estimators in Multiple Instance Learning (MIL).
+    """Wrapper for bag-level estimators in Multiple Instance Learning (MIL).
 
     The estimator is applied on a pooled representation of each bag.
     Supports pooling strategies: mean, max, min, extreme (concatenation of max and min).
     """
-    VALID_POOLS = {'mean', 'max', 'min', 'extreme'}
 
-    def __init__(self, estimator, pool='mean'):
-        """
-        Initialize BagWrapper.
+    VALID_POOLS = {"mean", "max", "min", "extreme"}
+
+    def __init__(self, estimator, pool="mean"):
+        """Initialize BagWrapper.
 
         Args:
             estimator: sklearn-like estimator with fit() and predict() or predict_proba()
@@ -55,11 +54,10 @@ class BagWrapper(BaseEstimator):
 
     def __repr__(self):
         pool_name = self.pool.__name__ if callable(self.pool) else self.pool.title()
-        return f'{self.__class__.__name__}|{self.estimator.__class__.__name__}|{pool_name}Pooling'
+        return f"{self.__class__.__name__}|{self.estimator.__class__.__name__}|{pool_name}Pooling"
 
     def _pooling(self, bags):
-        """
-        Pool instances in each bag to a single vector.
+        """Pool instances in each bag to a single vector.
 
         Args:
             bags (list of np.ndarray): list of bags, each bag is [n_instances, n_features]
@@ -67,13 +65,13 @@ class BagWrapper(BaseEstimator):
         Returns:
             np.ndarray: array of pooled bag representations [n_bags, n_features] or [n_bags, 2*n_features] for 'extreme'
         """
-        if self.pool == 'mean':
+        if self.pool == "mean":
             bag_embed = np.asarray([np.mean(bag, axis=0) for bag in bags])
-        elif self.pool == 'max':
+        elif self.pool == "max":
             bag_embed = np.asarray([np.max(bag, axis=0) for bag in bags])
-        elif self.pool == 'min':
+        elif self.pool == "min":
             bag_embed = np.asarray([np.min(bag, axis=0) for bag in bags])
-        elif self.pool == 'extreme':
+        elif self.pool == "extreme":
             bags_max = np.asarray([np.max(bag, axis=0) for bag in bags])
             bags_min = np.asarray([np.min(bag, axis=0) for bag in bags])
             bag_embed = np.concatenate((bags_max, bags_min), axis=1)
@@ -82,8 +80,7 @@ class BagWrapper(BaseEstimator):
         return bag_embed
 
     def hopt(self, x, y, param_grid, n_jobs=1, verbose=True):
-        """
-        Placeholder for hyperparameter optimization.
+        """Placeholder for hyperparameter optimization.
 
         Args:
             x, y: training data and labels
@@ -99,8 +96,7 @@ class BagWrapper(BaseEstimator):
         return None
 
     def fit(self, bags, labels):
-        """
-        Fit the estimator on bag-level representations.
+        """Fit the estimator on bag-level representations.
 
         Args:
             bags (list of np.ndarray): list of bags
@@ -109,14 +105,13 @@ class BagWrapper(BaseEstimator):
         Returns:
             self
         """
-        self.is_classifier = hasattr(self.estimator, 'predict_proba')
+        self.is_classifier = hasattr(self.estimator, "predict_proba")
         bag_embed = self._pooling(bags)
         self.estimator.fit(bag_embed, labels)
         return self
 
     def predict_proba(self, bags):
-        """
-        Predict class probabilities for each bag.
+        """Predict class probabilities for each bag.
 
         Args:
             bags (list of np.ndarray): list of bags
@@ -131,8 +126,7 @@ class BagWrapper(BaseEstimator):
         return y_prob
 
     def predict(self, bags):
-        """
-        Predict bag labels.
+        """Predict bag labels.
 
         Args:
             bags (list of np.ndarray): list of bags
@@ -148,8 +142,7 @@ class BagWrapper(BaseEstimator):
             return self.estimator.predict(bag_embed)
 
     def get_bag_embedding(self, x):
-        """
-        Return pooled bag embeddings.
+        """Return pooled bag embeddings.
 
         Args:
             x (list of np.ndarray): list of bags
@@ -162,17 +155,16 @@ class BagWrapper(BaseEstimator):
 
 
 class InstanceWrapper(BaseEstimator):
-    """
-    Wrapper for instance-level estimators in MIL.
+    """Wrapper for instance-level estimators in MIL.
 
-    Each instance is assigned the bag label. Bag-level prediction is obtained
-    by pooling instance predictions.
+    Each instance is assigned the bag label. Bag-level prediction is
+    obtained by pooling instance predictions.
     """
-    VALID_POOLS = {'mean', 'max', 'min'}
 
-    def __init__(self, estimator, pool='mean'):
-        """
-        Initialize InstanceWrapper.
+    VALID_POOLS = {"mean", "max", "min"}
+
+    def __init__(self, estimator, pool="mean"):
+        """Initialize InstanceWrapper.
 
         Args:
             estimator: sklearn-like estimator with fit() and predict() or predict_proba()
@@ -186,11 +178,10 @@ class InstanceWrapper(BaseEstimator):
 
     def __repr__(self):
         pool_name = self.pool.__name__ if callable(self.pool) else self.pool.title()
-        return f'{self.__class__.__name__}|{self.estimator.__class__.__name__}|{pool_name}Pooling'
+        return f"{self.__class__.__name__}|{self.estimator.__class__.__name__}|{pool_name}Pooling"
 
     def _pooling(self, inst_pred):
-        """
-        Pool instance predictions to obtain bag prediction.
+        """Pool instance predictions to obtain bag prediction.
 
         Args:
             inst_pred (np.ndarray): instance-level predictions
@@ -202,13 +193,13 @@ class InstanceWrapper(BaseEstimator):
 
         if callable(self.pool):
             bag_pred = self.pool(inst_pred)
-        elif self.pool == 'mean':
+        elif self.pool == "mean":
             bag_pred = np.mean(inst_pred, axis=0)
-        elif self.pool == 'sum':
+        elif self.pool == "sum":
             bag_pred = np.sum(inst_pred, axis=0)
-        elif self.pool == 'max':
+        elif self.pool == "max":
             bag_pred = np.max(inst_pred, axis=0)
-        elif self.pool == 'min':
+        elif self.pool == "min":
             bag_pred = np.min(inst_pred, axis=0)
         else:
             raise ValueError(f"Pooling strategy '{self.pool}' is not recognized.")
@@ -220,8 +211,7 @@ class InstanceWrapper(BaseEstimator):
         return None
 
     def fit(self, bags, labels):
-        """
-        Fit estimator on all instances with assigned bag labels.
+        """Fit estimator on all instances with assigned bag labels.
 
         Args:
             bags (list of np.ndarray): list of bags
@@ -230,15 +220,14 @@ class InstanceWrapper(BaseEstimator):
         Returns:
             self
         """
-        self.is_classifier = hasattr(self.estimator, 'predict_proba')
+        self.is_classifier = hasattr(self.estimator, "predict_proba")
         bags_transformed = np.vstack(np.asarray(bags, dtype=object)).astype(np.float32)
         labels_transformed = np.hstack([np.full(len(bag), lb) for bag, lb in zip(bags, labels)])
         self.estimator.fit(bags_transformed, labels_transformed)
         return self
 
     def predict_proba(self, bags):
-        """
-        Predict bag probabilities by pooling instance-level probabilities.
+        """Predict bag probabilities by pooling instance-level probabilities.
 
         Args:
             bags (list of np.ndarray): list of bags
@@ -257,8 +246,7 @@ class InstanceWrapper(BaseEstimator):
         return np.array(y_pred)
 
     def predict(self, bags):
-        """
-        Predict bag labels by pooling instance-level predictions.
+        """Predict bag labels by pooling instance-level predictions.
 
         Args:
             bags (list of np.ndarray): list of bags

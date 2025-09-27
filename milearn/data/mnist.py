@@ -1,11 +1,9 @@
 import numpy as np
-import matplotlib.pyplot as plt
 from torchvision import datasets, transforms
 
 
 def load_mnist(flatten=True):
-    """
-    Load MNIST dataset.
+    """Load MNIST dataset.
 
     Args:
         flatten (bool): If True, flatten 28x28 images to 784-dimensional vectors.
@@ -26,8 +24,8 @@ def load_mnist(flatten=True):
 
 
 def create_bags_or(data, targets, bag_size=10, num_bags=1000, key_digit=3, key_instances_per_bag=1, random_state=42):
-    """
-    Create OR-type MIL bags. Positive bags contain at least one key instance.
+    """Create OR-type MIL bags. Positive bags contain at least one key
+    instance.
 
     Args:
         data (np.ndarray): instance data
