@@ -5,7 +5,7 @@ from lightning.pytorch.utilities import rank_zero
 from pytorch_lightning import seed_everything
 
 
-def silence_and_seed_lightning(seed=42, level=logging.ERROR):
+def silence_and_seed_lightning(seed: int = 42, level: int = logging.ERROR) -> None:
     """Silence PyTorch Lightning logs and set random seeds for reproducibility.
 
     This function:

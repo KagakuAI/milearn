@@ -2,10 +2,13 @@ import torch
 from torch import nn
 
 from .base import BaseNetwork, instance_dropout
+from typing import Any
+from torch import Tensor
+from typing import Tuple
 
 
 class BaseAttentionNetwork(BaseNetwork):
-    def __init__(self, tau=1.0, **kwargs):
+    def __init__(self, tau: float = 1.0, **kwargs: Any) -> None:
         """Base class for attention-based MIL networks.
 
         Args:
@@ -35,7 +38,7 @@ class BaseAttentionNetwork(BaseNetwork):
         """
         raise NotImplementedError
 
-    def forward(self, bags, inst_mask):
+    def forward(self, bags: Tensor, inst_mask: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
         """Forward pass through the attention network.
 
         Args:
@@ -78,7 +81,7 @@ class BaseAttentionNetwork(BaseNetwork):
 
 
 class AdditiveAttentionNetwork(BaseAttentionNetwork):
-    def _create_attention(self, hidden_layer_sizes):
+    def _create_attention(self, hidden_layer_sizes: Tuple[int, int, int]) -> None:
         """Create additive attention mechanism.
 
         Args:
@@ -88,7 +91,7 @@ class AdditiveAttentionNetwork(BaseAttentionNetwork):
             nn.Linear(hidden_layer_sizes[-1], hidden_layer_sizes[-1]), nn.Tanh(), nn.Linear(hidden_layer_sizes[-1], 1)
         )
 
-    def compute_attention(self, inst_embed, inst_mask):
+    def compute_attention(self, inst_embed: Tensor, inst_mask: Tensor) -> Tuple[Tensor, Tensor]:
         """Compute additive attention.
 
         Args:
@@ -117,7 +120,7 @@ class AdditiveAttentionNetwork(BaseAttentionNetwork):
 
 
 class SelfAttentionNetwork(BaseAttentionNetwork):
-    def _create_attention(self, hidden_layer_sizes):
+    def _create_attention(self, hidden_layer_sizes: Tuple[int, int, int]) -> None:
         """Create self-attention mechanism.
 
         Args:
@@ -128,7 +131,7 @@ class SelfAttentionNetwork(BaseAttentionNetwork):
         self.k_proj = nn.Linear(D, D)
         self.v_proj = nn.Linear(D, D)
 
-    def compute_attention(self, inst_embed, inst_mask):
+    def compute_attention(self, inst_embed: Tensor, inst_mask: Tensor) -> Tuple[Tensor, Tensor]:
         """Compute self-attention.
 
         Args:
@@ -165,7 +168,7 @@ class SelfAttentionNetwork(BaseAttentionNetwork):
 
 
 class HopfieldAttentionNetwork(BaseAttentionNetwork):
-    def __init__(self, tau=1.0, **kwargs):
+    def __init__(self, tau: float = 1.0, **kwargs: Any) -> None:
         """Hopfield-style attention network.
 
         Args:
@@ -175,7 +178,7 @@ class HopfieldAttentionNetwork(BaseAttentionNetwork):
         super().__init__(**kwargs)
         self.beta = tau
 
-    def _create_attention(self, hidden_layer_sizes):
+    def _create_attention(self, hidden_layer_sizes: Tuple[int, int, int]) -> None:
         """Create Hopfield-style attention mechanism.
 
         Args:
@@ -183,7 +186,7 @@ class HopfieldAttentionNetwork(BaseAttentionNetwork):
         """
         self.query_vector = nn.Parameter(torch.randn(1, hidden_layer_sizes[-1]))
 
-    def compute_attention(self, inst_embed, inst_mask):
+    def compute_attention(self, inst_embed: Tensor, inst_mask: Tensor) -> Tuple[Tensor, Tensor]:
         """Compute Hopfield-style attention.
 
         Args:

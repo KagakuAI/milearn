@@ -3,12 +3,14 @@ from .module.base import BaseClassifier
 from .module.classic import BagNetwork, InstanceNetwork
 from .module.dynamic import DynamicPoolingNetwork, MarginLoss
 from .module.mlp import BagWrapperMLPNetwork, InstanceWrapperMLPNetwork
+from typing import Any
+from torch import Tensor
 
 
 class BagNetworkClassifier(BagNetwork, BaseClassifier):
     """Bag-level network with mean/sum/max pooling for classification."""
 
-    def __init__(self, pool="mean", **kwargs):
+    def __init__(self, pool: str = "mean", **kwargs: Any) -> None:
         """Initialize BagNetworkClassifier.
 
         Args:
@@ -22,7 +24,7 @@ class InstanceNetworkClassifier(InstanceNetwork, BaseClassifier):
     """Instance-level network with per-instance predictions pooled to bag-level
     for classification."""
 
-    def __init__(self, pool="mean", **kwargs):
+    def __init__(self, pool: str = "mean", **kwargs: Any) -> None:
         """Initialize InstanceNetworkClassifier.
 
         Args:
@@ -35,7 +37,7 @@ class InstanceNetworkClassifier(InstanceNetwork, BaseClassifier):
 class AdditiveAttentionNetworkClassifier(AdditiveAttentionNetwork, BaseClassifier):
     """Additive attention network adapted for classification."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         """Initialize AdditiveAttentionNetworkClassifier.
 
         Args:
@@ -47,7 +49,7 @@ class AdditiveAttentionNetworkClassifier(AdditiveAttentionNetwork, BaseClassifie
 class SelfAttentionNetworkClassifier(SelfAttentionNetwork, BaseClassifier):
     """Self-attention network adapted for classification."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         """Initialize SelfAttentionNetworkClassifier.
 
         Args:
@@ -59,7 +61,7 @@ class SelfAttentionNetworkClassifier(SelfAttentionNetwork, BaseClassifier):
 class HopfieldAttentionNetworkClassifier(HopfieldAttentionNetwork, BaseClassifier):
     """Hopfield-style attention network adapted for classification."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         """Initialize HopfieldAttentionNetworkClassifier.
 
         Args:
@@ -71,7 +73,7 @@ class HopfieldAttentionNetworkClassifier(HopfieldAttentionNetwork, BaseClassifie
 class BagWrapperMLPNetworkClassifier(BagWrapperMLPNetwork, BaseClassifier):
     """MLP network with bag-level pooling for classification."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         """Initialize BagWrapperMLPNetworkClassifier.
 
         Args:
@@ -84,7 +86,7 @@ class InstanceWrapperMLPNetworkClassifier(InstanceWrapperMLPNetwork, BaseClassif
     """MLP network with instance-level predictions pooled to bag-level for
     classification."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         """Initialize InstanceWrapperMLPNetworkClassifier.
 
         Args:
@@ -96,7 +98,7 @@ class InstanceWrapperMLPNetworkClassifier(InstanceWrapperMLPNetwork, BaseClassif
 class DynamicPoolingNetworkClassifier(DynamicPoolingNetwork, BaseClassifier):
     """Dynamic pooling network adapted for classification."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         """Initialize DynamicPoolingNetworkClassifier.
 
         Args:
@@ -104,7 +106,7 @@ class DynamicPoolingNetworkClassifier(DynamicPoolingNetwork, BaseClassifier):
         """
         super().__init__(**kwargs)
 
-    def loss(self, y_pred, y_true):
+    def loss(self, y_pred: Tensor, y_true: Tensor) -> Tensor:
         """Compute margin-based loss for classification.
 
         Args:

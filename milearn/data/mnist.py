@@ -3,9 +3,12 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 from torchvision import datasets, transforms
+from numpy import ndarray
+from typing import Tuple
+from typing import List
 
 
-def load_mnist(flatten=True):
+def load_mnist(flatten: bool = True) -> Tuple[ndarray, ndarray]:
     """
     Load MNIST dataset as NumPy arrays.
 
@@ -26,7 +29,7 @@ def load_mnist(flatten=True):
     return data, targets
 
 
-def create_bags_or(data, targets, bag_size=10, num_bags=1000, key_digit=3, key_instances_per_bag=1, random_state=42):
+def create_bags_or(data: ndarray, targets: ndarray, bag_size: int = 10, num_bags: int = 1000, key_digit: int = 3, key_instances_per_bag: int = 1, random_state: int = 42) -> Tuple[List[ndarray], List[int], List[List[int]]]:
     """
     Create bags for MIL using OR logic: bag is positive if it contains at least one key digit.
 
@@ -178,7 +181,7 @@ def create_bags_xor(data, targets, bag_size=10, num_bags=1000, key_digits=(3, 7)
     return bags, bag_labels, key_indices_per_bag
 
 
-def create_bags_reg(data, targets, bag_size=5, num_bags=1000, bag_agg="mean", random_state=42):
+def create_bags_reg(data: ndarray, targets: ndarray, bag_size: int = 5, num_bags: int = 1000, bag_agg: str = "mean", random_state: int = 42) -> Tuple[List[ndarray], List[float], List[List[int]]]:
     """
     Create regression-style bags: bag label is aggregated from instance labels.
 

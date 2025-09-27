@@ -6,12 +6,23 @@ from torch.utils.data import DataLoader, TensorDataset, random_split
 from milearn.network.module.base import BaseNetwork
 from milearn.network.module.hopt import StepwiseHopt
 from milearn.network.module.utils import silence_and_seed_lightning
+from numpy import ndarray
+from typing import Any
+from pytorch_lightning.trainer.states import TrainerFn
+from torch.utils.data.dataloader import DataLoader
+from torch import Tensor
+from typing import List
+from typing import Union
+from milearn.network.classifier import BagWrapperMLPNetworkClassifier
+from milearn.network.regressor import BagWrapperMLPNetworkRegressor
+from milearn.network.classifier import InstanceWrapperMLPNetworkClassifier
+from milearn.network.regressor import InstanceWrapperMLPNetworkRegressor
 
 
 class DataModule(pl.LightningDataModule):
     """PyTorch Lightning data module for handling bags and labels."""
 
-    def __init__(self, x, y=None, batch_size=128, num_workers=0, val_split=0.2):
+    def __init__(self, x: ndarray, y: Any = None, batch_size: int = 128, num_workers: int = 0, val_split: float = 0.2) -> None:
         """Initialize DataModule.
 
         Args:
@@ -28,7 +39,7 @@ class DataModule(pl.LightningDataModule):
         self.num_workers = num_workers
         self.val_split = val_split
 
-    def setup(self, stage=None):
+    def setup(self, stage: TrainerFn = None) -> None:
         """Prepare datasets for training, validation, or prediction.
 
         Args:
@@ -44,7 +55,7 @@ class DataModule(pl.LightningDataModule):
         else:
             self.dataset = TensorDataset(x_tensor)
 
-    def train_dataloader(self):
+    def train_dataloader(self) -> DataLoader:
         """Training dataloader.
 
         Returns:
@@ -54,7 +65,7 @@ class DataModule(pl.LightningDataModule):
             raise ValueError("No labels provided, cannot create train loader")
         return DataLoader(self.train_ds, batch_size=self.batch_size, shuffle=True, num_workers=self.num_workers)
 
-    def val_dataloader(self):
+    def val_dataloader(self) -> DataLoader:
         """Validation dataloader.
 
         Returns:
@@ -64,7 +75,7 @@ class DataModule(pl.LightningDataModule):
             raise ValueError("No labels provided, cannot create val loader")
         return DataLoader(self.val_ds, batch_size=self.batch_size, num_workers=self.num_workers)
 
-    def predict_dataloader(self):
+    def predict_dataloader(self) -> DataLoader:
         """Prediction dataloader.
 
         Returns:
@@ -78,7 +89,7 @@ class MLPNetwork(BaseNetwork):
     """Multi-layer perceptron network for bag-level or instance-level
     prediction."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         """Initialize MLPNetwork.
 
         Args:
@@ -87,7 +98,7 @@ class MLPNetwork(BaseNetwork):
         super().__init__(**kwargs)
         silence_and_seed_lightning(seed=self.hparams.random_seed)
 
-    def forward(self, X):
+    def forward(self, X: Tensor) -> Tensor:
         """Forward pass.
 
         Args:
@@ -101,7 +112,7 @@ class MLPNetwork(BaseNetwork):
         y_pred = self.prediction(y_score)
         return y_pred
 
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch: List[Tensor], batch_idx: int) -> Tensor:
         """Training step.
 
         Args:
@@ -117,7 +128,7 @@ class MLPNetwork(BaseNetwork):
         self.log("train_loss", loss, on_step=False, on_epoch=True)
         return loss
 
-    def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch: List[Tensor], batch_idx: int) -> Tensor:
         """Validation step.
 
         Args:
@@ -133,7 +144,7 @@ class MLPNetwork(BaseNetwork):
         self.log("val_loss", loss, on_step=False, on_epoch=True)
         return loss
 
-    def predict_step(self, batch, batch_idx):
+    def predict_step(self, batch: List[Tensor], batch_idx: int) -> Tensor:
         """Prediction step.
 
         Args:
@@ -146,7 +157,7 @@ class MLPNetwork(BaseNetwork):
         x = batch[0]
         return self.forward(x)
 
-    def fit(self, x, y):
+    def fit(self, x: ndarray, y: Union[List[float], List[int], ndarray]) -> Any:
         """Fit the model on the provided dataset.
 
         Args:
@@ -163,7 +174,7 @@ class MLPNetwork(BaseNetwork):
         self._create_and_fit_trainer(datamodule)
         return self
 
-    def predict(self, x):
+    def predict(self, x: ndarray) -> ndarray:
         """Predict on new data.
 
         Args:
@@ -181,7 +192,7 @@ class MLPNetwork(BaseNetwork):
 class BagWrapperMLPNetwork(MLPNetwork, StepwiseHopt):
     """Wrapper for MLPNetwork to handle bag-level pooling."""
 
-    def __init__(self, pool="mean", **kwargs):
+    def __init__(self, pool: str = "mean", **kwargs: Any) -> None:
         """Initialize BagWrapperMLPNetwork.
 
         Args:
@@ -192,7 +203,7 @@ class BagWrapperMLPNetwork(MLPNetwork, StepwiseHopt):
         self.pool = pool
         self.save_hyperparameters()
 
-    def fit(self, X, Y):
+    def fit(self, X: List[ndarray], Y: Union[List[float], List[int]]) -> Union[BagWrapperMLPNetworkClassifier, BagWrapperMLPNetworkRegressor]:
         """Fit the model after pooling bag representations.
 
         Args:
@@ -208,7 +219,7 @@ class BagWrapperMLPNetwork(MLPNetwork, StepwiseHopt):
             raise RuntimeError("Unknown pooling strategy.")
         return super().fit(X, Y)
 
-    def predict(self, X):
+    def predict(self, X: List[ndarray]) -> ndarray:
         """Predict after pooling bag representations.
 
         Args:
@@ -228,7 +239,7 @@ class InstanceWrapperMLPNetwork(MLPNetwork, StepwiseHopt):
     """Wrapper for MLPNetwork to handle instance-level predictions with
     pooling."""
 
-    def __init__(self, pool="mean", **kwargs):
+    def __init__(self, pool: str = "mean", **kwargs: Any) -> None:
         """Initialize InstanceWrapperMLPNetwork.
 
         Args:
@@ -241,7 +252,7 @@ class InstanceWrapperMLPNetwork(MLPNetwork, StepwiseHopt):
         if self.pool != "mean":
             raise ValueError(f"Pooling strategy '{self.pool}' is not recognized.")
 
-    def fit(self, X, Y):
+    def fit(self, X: List[ndarray], Y: Union[List[float], List[int]]) -> Union[InstanceWrapperMLPNetworkClassifier, InstanceWrapperMLPNetworkRegressor]:
         """Fit model after converting bags to single-instance dataset.
 
         Args:
@@ -255,7 +266,7 @@ class InstanceWrapperMLPNetwork(MLPNetwork, StepwiseHopt):
         X = np.vstack(np.asarray(X, dtype=object)).astype(np.float32)
         return super().fit(X, Y)
 
-    def predict(self, bags):
+    def predict(self, bags: List[ndarray]) -> ndarray:
         """Predict on instance-level and pool results to bag-level.
 
         Args:

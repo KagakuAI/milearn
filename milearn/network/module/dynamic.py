@@ -3,6 +3,9 @@ import torch.nn.functional as F
 from torch import nn
 
 from .base import BaseNetwork, instance_dropout
+from torch import Tensor
+from typing import Tuple
+from typing import Any
 
 
 class MarginLoss(nn.Module):
@@ -21,7 +24,7 @@ class MarginLoss(nn.Module):
         self.m_neg = m_neg
         self.alpha = alpha
 
-    def forward(self, lengths, labels):
+    def forward(self, lengths: Tensor, labels: Tensor) -> Tensor:
         """Compute margin loss.
 
         Args:
@@ -40,7 +43,7 @@ class MarginLoss(nn.Module):
 class Squash(nn.Module):
     """Squashing nonlinearity for capsule-like networks."""
 
-    def forward(self, bag_embed):
+    def forward(self, bag_embed: Tensor) -> Tensor:
         """Apply squash function.
 
         Args:
@@ -57,7 +60,7 @@ class Squash(nn.Module):
 class Norm(nn.Module):
     """Compute L2 norm of bag embeddings."""
 
-    def forward(self, bag_squash):
+    def forward(self, bag_squash: Tensor) -> Tensor:
         """Compute norm.
 
         Args:
@@ -72,7 +75,7 @@ class Norm(nn.Module):
 class DynamicPooling(nn.Module):
     """Dynamic routing-based pooling layer for multiple-instance learning."""
 
-    def __init__(self, n_iter=3):
+    def __init__(self, n_iter: int = 3) -> None:
         """Initialize DynamicPooling.
 
         Args:
@@ -81,7 +84,7 @@ class DynamicPooling(nn.Module):
         super().__init__()
         self.n_iter = n_iter
 
-    def forward(self, inst_embed, inst_mask):
+    def forward(self, inst_embed: Tensor, inst_mask: Tensor) -> Tuple[Tensor, Tensor]:
         """Apply dynamic pooling.
 
         Args:
@@ -108,7 +111,7 @@ class DynamicPooling(nn.Module):
 class DynamicPoolingNetwork(BaseNetwork):
     """A dynamic pooling-based multiple-instance learning network."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         """Initialize DynamicPoolingNetwork.
 
         Args:
@@ -126,7 +129,7 @@ class DynamicPoolingNetwork(BaseNetwork):
         super()._create_basic_layers(input_layer_size, hidden_layer_sizes)
         self.bag_estimator = Norm()
 
-    def _create_special_layers(self, input_layer_size, hidden_layer_sizes):
+    def _create_special_layers(self, input_layer_size: int, hidden_layer_sizes: Tuple[int, int, int]) -> None:
         """Create dynamic pooling layer.
 
         Args:
@@ -135,7 +138,7 @@ class DynamicPoolingNetwork(BaseNetwork):
         """
         self.dynamic_pooling = DynamicPooling()
 
-    def forward(self, bags, inst_mask):
+    def forward(self, bags: Tensor, inst_mask: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
         """Forward pass of DynamicPoolingNetwork.
 
         Args:

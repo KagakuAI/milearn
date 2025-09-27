@@ -1,12 +1,15 @@
 from .base import BaseNetwork, instance_dropout
 from .hopt import StepwiseHopt
+from typing import Any
+from torch import Tensor
+from typing import Tuple
 
 
 class BagNetwork(BaseNetwork, StepwiseHopt):
     """A neural network model for multiple-instance learning (MIL) that
     aggregates instance embeddings into bag-level representations."""
 
-    def __init__(self, pool="mean", **kwargs):
+    def __init__(self, pool: str = "mean", **kwargs: Any) -> None:
         """Initialize BagNetwork.
 
         Args:
@@ -16,7 +19,7 @@ class BagNetwork(BaseNetwork, StepwiseHopt):
         super().__init__(**kwargs)
         self.pool = pool
 
-    def _pooling(self, bags, inst_mask):
+    def _pooling(self, bags: Tensor, inst_mask: Tensor) -> Tensor:
         """Apply pooling over instance embeddings to create bag embeddings.
 
         Args:
@@ -40,7 +43,7 @@ class BagNetwork(BaseNetwork, StepwiseHopt):
         bag_embed = bag_embed.unsqueeze(1)
         return bag_embed
 
-    def forward(self, bags, inst_mask):
+    def forward(self, bags: Tensor, inst_mask: Tensor) -> Tuple[Tensor, None, Tensor]:
         """Forward pass of BagNetwork.
 
         Args:
@@ -81,7 +84,7 @@ class InstanceNetwork(BaseNetwork):
     """A neural network model for multiple-instance learning (MIL) that
     aggregates predictions at the instance level."""
 
-    def __init__(self, pool="mean", **kwargs):
+    def __init__(self, pool: str = "mean", **kwargs: Any) -> None:
         """Initialize InstanceNetwork.
 
         Args:
@@ -91,7 +94,7 @@ class InstanceNetwork(BaseNetwork):
         super().__init__(**kwargs)
         self.pool = pool
 
-    def _pooling(self, inst_pred, inst_mask):
+    def _pooling(self, inst_pred: Tensor, inst_mask: Tensor) -> Tensor:
         """Apply pooling over instance predictions to create bag predictions.
 
         Args:
@@ -114,7 +117,7 @@ class InstanceNetwork(BaseNetwork):
         bag_pred = bag_pred.unsqueeze(1)
         return bag_pred
 
-    def forward(self, bags, inst_mask):
+    def forward(self, bags: Tensor, inst_mask: Tensor) -> Tuple[None, None, Tensor]:
         """Forward pass of InstanceNetwork.
 
         Args:

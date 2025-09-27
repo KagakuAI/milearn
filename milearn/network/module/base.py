@@ -9,9 +9,23 @@ from torch.utils.data import DataLoader, TensorDataset, random_split
 
 from .hopt import StepwiseHopt
 from .utils import TrainLogging, silence_and_seed_lightning
+from numpy import ndarray
+from typing import List
+from typing import Union
+from typing import Tuple
+from pytorch_lightning.trainer.states import TrainerFn
+from torch.utils.data.dataloader import DataLoader
+from torch import Tensor
+from torch.nn.modules.activation import GELU
+from torch.nn.modules.linear import Linear
+from milearn.network.module.base import DataModule
+from milearn.network.module.mlp import DataModule
+from typing import Any
+from typing import Optional
+from torch.optim.adamw import AdamW
 
 
-def instance_dropout(m, p=0.0, training=True):
+def instance_dropout(m: Tensor, p: float = 0.0, training: bool = True) -> Tensor:
     """Apply instance-level dropout with optional mask fixing.
 
     Args:
@@ -45,7 +59,7 @@ def instance_dropout(m, p=0.0, training=True):
 
 
 class DataModule(pl.LightningDataModule):
-    def __init__(self, x, y=None, batch_size=128, num_workers=0, val_split=0.2):
+    def __init__(self, x: List[ndarray], y: Union[List[float], List[int], None] = None, batch_size: int = 128, num_workers: int = 0, val_split: float = 0.2) -> None:
         """Data module for bagged input with padding and splitting.
 
         Args:
@@ -62,7 +76,7 @@ class DataModule(pl.LightningDataModule):
         self.num_workers = num_workers
         self.val_split = val_split
 
-    def add_padding(self, x):
+    def add_padding(self, x: List[ndarray]) -> Tuple[ndarray, ndarray]:
         """Pad bags to the same size and create mask.
 
         Args:
@@ -87,7 +101,7 @@ class DataModule(pl.LightningDataModule):
         out_bags = np.asarray(out)
         return out_bags, mask
 
-    def setup(self, stage=None):
+    def setup(self, stage: TrainerFn = None) -> None:
         """Prepare datasets with optional train/val split.
 
         Args:
@@ -107,7 +121,7 @@ class DataModule(pl.LightningDataModule):
         else:
             self.dataset = TensorDataset(x_tensor, m_tensor)
 
-    def train_dataloader(self):
+    def train_dataloader(self) -> DataLoader:
         """Get training dataloader.
 
         Returns:
@@ -120,7 +134,7 @@ class DataModule(pl.LightningDataModule):
             raise ValueError("No labels provided, cannot create train loader")
         return DataLoader(self.train_ds, batch_size=self.batch_size, shuffle=True, num_workers=self.num_workers)
 
-    def val_dataloader(self):
+    def val_dataloader(self) -> DataLoader:
         """Get validation dataloader.
 
         Returns:
@@ -133,7 +147,7 @@ class DataModule(pl.LightningDataModule):
             raise ValueError("No labels provided, cannot create val loader")
         return DataLoader(self.val_ds, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers)
 
-    def predict_dataloader(self):
+    def predict_dataloader(self) -> DataLoader:
         """Get prediction dataloader.
 
         Returns:
@@ -144,7 +158,7 @@ class DataModule(pl.LightningDataModule):
 
 
 class BaseClassifier:
-    def loss(self, y_pred, y_true):
+    def loss(self, y_pred: Tensor, y_true: Tensor) -> Tensor:
         """Compute binary cross-entropy loss.
 
         Args:
@@ -157,7 +171,7 @@ class BaseClassifier:
         total_loss = nn.BCELoss(reduction="mean")(y_pred, y_true)
         return total_loss
 
-    def prediction(self, out):
+    def prediction(self, out: Tensor) -> Tensor:
         """Apply sigmoid to raw outputs.
 
         Args:
@@ -171,7 +185,7 @@ class BaseClassifier:
 
 
 class BaseRegressor:
-    def loss(self, y_pred, y_true):
+    def loss(self, y_pred: Tensor, y_true: Tensor) -> Tensor:
         """Compute mean squared error loss.
 
         Args:
@@ -184,7 +198,7 @@ class BaseRegressor:
         total_loss = nn.MSELoss(reduction="mean")(y_pred, y_true)
         return total_loss
 
-    def prediction(self, out):
+    def prediction(self, out: Tensor) -> Tensor:
         """Identity prediction for regression.
 
         Args:
@@ -232,19 +246,19 @@ class InstanceTransformer:
 class BaseNetwork(pl.LightningModule, StepwiseHopt):
     def __init__(
         self,
-        hidden_layer_sizes=(256, 128, 64),
-        max_epochs=1000,
-        batch_size=128,
-        activation="gelu",
-        learning_rate=0.001,
-        early_stopping=True,
-        weight_decay=0.0,
-        instance_dropout=0.0,
-        accelerator="cpu",
-        verbose=False,
-        random_seed=42,
-        num_workers=0,
-    ):
+        hidden_layer_sizes: Tuple[int, int, int] = (256, 128, 64),
+        max_epochs: int = 1000,
+        batch_size: int = 128,
+        activation: str = "gelu",
+        learning_rate: float = 0.001,
+        early_stopping: bool = True,
+        weight_decay: float = 0.0,
+        instance_dropout: float = 0.0,
+        accelerator: str = "cpu",
+        verbose: bool = False,
+        random_seed: int = 42,
+        num_workers: int = 0,
+    ) -> None:
         """Base network class with training utilities.
 
         Args:
@@ -266,7 +280,7 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
         self.save_hyperparameters()
         silence_and_seed_lightning(seed=self.random_seed)
 
-    def _init_weights(self, m):
+    def _init_weights(self, m: Union[GELU, Linear]) -> None:
         """Initialize weights deterministically.
 
         Args:
@@ -302,7 +316,7 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
         """
         return NotImplementedError
 
-    def _create_and_fit_trainer(self, datamodule):
+    def _create_and_fit_trainer(self, datamodule: Union[DataModule, DataModule]) -> Optional[Any]:
         """Create and fit a PyTorch Lightning trainer.
 
         Args:
@@ -335,7 +349,7 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
 
         return None
 
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch: List[Tensor], batch_idx: int) -> Tensor:
         """Training step.
 
         Args:
@@ -351,7 +365,7 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
         self.log("train_loss", loss, on_step=False, on_epoch=True)
         return loss
 
-    def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch: List[Tensor], batch_idx: int) -> Tensor:
         """Validation step.
 
         Args:
@@ -367,7 +381,7 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
         self.log("val_loss", loss, on_step=False, on_epoch=True)
         return loss
 
-    def predict_step(self, batch, batch_idx):
+    def predict_step(self, batch: List[Tensor], batch_idx: int) -> Tuple[Optional[Tensor], Optional[Tensor], Tensor]:
         """Prediction step.
 
         Args:
@@ -380,7 +394,7 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
         x, m = batch
         return self.forward(x, m)
 
-    def configure_optimizers(self):
+    def configure_optimizers(self) -> AdamW:
         """Configure optimizer.
 
         Returns:
@@ -391,7 +405,7 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
         )
         return optimizer
 
-    def fit(self, x, y):
+    def fit(self, x: List[ndarray], y: Union[List[float], List[int]]) -> Any:
         """Fit the model.
 
         Args:
@@ -418,7 +432,7 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
 
         return self
 
-    def _get_output(self, x):
+    def _get_output(self, x: List[ndarray]) -> Tuple[Union[List[Tuple[None, None, Tensor]], List[Tuple[Tensor, None, Tensor]], List[Tuple[Tensor, Tensor, Tensor]]], DataModule]:
         """Run prediction with datamodule.
 
         Args:
@@ -431,7 +445,7 @@ class BaseNetwork(pl.LightningModule, StepwiseHopt):
         outputs = self._trainer.predict(self, datamodule=datamodule)
         return outputs, datamodule
 
-    def predict(self, x):
+    def predict(self, x: List[ndarray]) -> ndarray:
         """Predict bag-level outputs.
 
         Args:

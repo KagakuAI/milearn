@@ -6,12 +6,16 @@ from .module.base import BaseRegressor
 from .module.classic import BagNetwork, InstanceNetwork
 from .module.dynamic import DynamicPoolingNetwork
 from .module.mlp import BagWrapperMLPNetwork, InstanceWrapperMLPNetwork
+from typing import Any
+from milearn.network.regressor import DynamicPoolingNetworkRegressor
+from numpy import ndarray
+from typing import List
 
 
 class BagNetworkRegressor(BagNetwork, BaseRegressor):
     """Bag-level network with mean/sum/max pooling for regression tasks."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         """Initialize BagNetworkRegressor.
 
         Args:
@@ -24,7 +28,7 @@ class InstanceNetworkRegressor(InstanceNetwork, BaseRegressor):
     """Instance-level network with per-instance predictions pooled to bag-level
     for regression."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         """Initialize InstanceNetworkRegressor.
 
         Args:
@@ -36,7 +40,7 @@ class InstanceNetworkRegressor(InstanceNetwork, BaseRegressor):
 class AdditiveAttentionNetworkRegressor(AdditiveAttentionNetwork, BaseRegressor):
     """Additive attention network adapted for regression tasks."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         """Initialize AdditiveAttentionNetworkRegressor.
 
         Args:
@@ -48,7 +52,7 @@ class AdditiveAttentionNetworkRegressor(AdditiveAttentionNetwork, BaseRegressor)
 class SelfAttentionNetworkRegressor(SelfAttentionNetwork, BaseRegressor):
     """Self-attention network adapted for regression tasks."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         """Initialize SelfAttentionNetworkRegressor.
 
         Args:
@@ -60,7 +64,7 @@ class SelfAttentionNetworkRegressor(SelfAttentionNetwork, BaseRegressor):
 class HopfieldAttentionNetworkRegressor(HopfieldAttentionNetwork, BaseRegressor):
     """Hopfield-style attention network adapted for regression tasks."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         """Initialize HopfieldAttentionNetworkRegressor.
 
         Args:
@@ -72,7 +76,7 @@ class HopfieldAttentionNetworkRegressor(HopfieldAttentionNetwork, BaseRegressor)
 class BagWrapperMLPNetworkRegressor(BagWrapperMLPNetwork, BaseRegressor):
     """MLP network with bag-level pooling for regression tasks."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         """Initialize BagWrapperMLPNetworkRegressor.
 
         Args:
@@ -85,7 +89,7 @@ class InstanceWrapperMLPNetworkRegressor(InstanceWrapperMLPNetwork, BaseRegresso
     """MLP network with instance-level predictions pooled to bag-level for
     regression tasks."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         """Initialize InstanceWrapperMLPNetworkRegressor.
 
         Args:
@@ -101,7 +105,7 @@ class DynamicPoolingNetworkRegressor(DynamicPoolingNetwork, BaseRegressor):
     inverse transforms predictions.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         """Initialize DynamicPoolingNetworkRegressor.
 
         Args:
@@ -109,7 +113,7 @@ class DynamicPoolingNetworkRegressor(DynamicPoolingNetwork, BaseRegressor):
         """
         super().__init__(**kwargs)
 
-    def fit(self, x, y):
+    def fit(self, x: List[ndarray], y: List[float]) -> DynamicPoolingNetworkRegressor:
         """Fit the network on training data with scaled target values.
 
         Args:
@@ -125,7 +129,7 @@ class DynamicPoolingNetworkRegressor(DynamicPoolingNetwork, BaseRegressor):
 
         return super().fit(x, y)
 
-    def predict(self, x):
+    def predict(self, x: List[ndarray]) -> ndarray:
         """Predict target values for input bags and inverse transform scaling.
 
         Args:
