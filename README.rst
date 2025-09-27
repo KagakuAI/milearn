@@ -14,7 +14,7 @@ Installation
 
 .. code-block:: bash
 
-    pip install milearn
+    pip install mikit-learn
 
 Quick Start
 -----------
