@@ -1,72 +1,86 @@
 import numpy as np
-from torchvision import datasets, transforms
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.preprocessing import MinMaxScaler, StandardScaler, MaxAbsScaler, RobustScaler
 
-
-def load_mnist(flatten=True):
-    """Load MNIST dataset.
-
-    Args:
-        flatten (bool): If True, flatten 28x28 images to 784-dimensional vectors.
-
-    Returns:
-        tuple:
-            - data (np.ndarray): images as arrays (flattened if flatten=True)
-            - targets (np.ndarray): corresponding labels
+class BagScaler(BaseEstimator, TransformerMixin):
     """
-    transform = transforms.Compose([transforms.ToTensor()])
-    mnist = datasets.MNIST(root="./data", train=True, download=True, transform=transform)
-    data = mnist.data.numpy()
-    targets = mnist.targets.numpy()
+    Wrapper to apply scikit-learn scalers to bags of instances.
 
-    if flatten:
-        data = data.reshape((data.shape[0], -1))
-    return data, targets
-
-
-def create_bags_or(data, targets, bag_size=10, num_bags=1000, key_digit=3, key_instances_per_bag=1, random_state=42):
-    """Create OR-type MIL bags. Positive bags contain at least one key
-    instance.
-
-    Args:
-        data (np.ndarray): instance data
-        targets (np.ndarray): instance labels
-        bag_size (int): number of instances per bag
-        num_bags (int): number of bags to generate
-        key_digit (int): digit considered as key instance
-        key_instances_per_bag (int): number of key instances in positive bags
-        random_state (int): random seed
-
-    Returns:
-        tuple:
-            - bags (list of np.ndarray): list of bags
-            - bag_labels (list of int): bag-level labels (0/1)
-            - key_indices_per_bag (list of list of int): positions of key instances in each bag
+    Each bag is a 2D array of shape [n_instances, n_features]. The scaler is
+    fitted on all instances from all bags and then applied individually to each bag.
     """
-    rng = np.random.RandomState(random_state)
-    key_indices_all = np.where(targets == key_digit)[0]
-    non_key_indices_all = np.where(targets != key_digit)[0]
+    def __init__(self, scaler=None):
+        """
+        Initialize BagScaler.
 
-    bags, bag_labels, key_indices_per_bag = [], [], []
+        Args:
+            scaler: scikit-learn scaler instance (e.g., MinMaxScaler, StandardScaler).
+                    Defaults to MinMaxScaler() if None.
+        """
+        self.scaler = scaler if scaler is not None else MinMaxScaler()
 
-    for _ in range(num_bags):
-        is_positive = rng.rand() < 0.5
+    def fit(self, x, y=None):
+        """
+        Fit the scaler using all instances from all bags.
 
-        if is_positive:
-            key_sample_indices = rng.choice(key_indices_all, size=key_instances_per_bag, replace=False)
-            remaining = bag_size - key_instances_per_bag
-            non_key_sample_indices = rng.choice(non_key_indices_all, size=remaining, replace=False)
-            full_indices = np.concatenate([key_sample_indices, non_key_sample_indices])
-            rng.shuffle(full_indices)
-            key_pos_in_bag = [i for i, idx in enumerate(full_indices) if idx in key_sample_indices]
-            label = 1
-        else:
-            full_indices = rng.choice(non_key_indices_all, size=bag_size, replace=False)
-            key_pos_in_bag = []
-            label = 0
+        Args:
+            x (list of np.ndarray): list of bags, each bag is [n_instances, n_features].
+            y: optional target values (passed to scaler if needed).
 
-        bag = data[full_indices]
-        bags.append(bag)
-        bag_labels.append(label)
-        key_indices_per_bag.append(key_pos_in_bag)
+        Returns:
+            self
+        """
+        all_instances = np.vstack(x)  # stack all bags for fitting
+        self.scaler.fit(all_instances, y)
+        return self
 
-    return bags, bag_labels, key_indices_per_bag
+    def transform(self, x):
+        """
+        Transform each bag using the fitted scaler.
+
+        Args:
+            x (list of np.ndarray): list of bags to transform.
+
+        Returns:
+            list of np.ndarray: scaled bags
+        """
+        x_scaled = [self.scaler.transform(bag) for bag in x]
+        return x_scaled
+
+    def fit_transform(self, X, y=None, **fit_params):
+        """
+        Fit the scaler and transform the bags in a single step.
+
+        Args:
+            X (list of np.ndarray): list of bags to fit and transform.
+            y: optional target values.
+            **fit_params: additional fit parameters.
+
+        Returns:
+            list of np.ndarray: scaled bags
+        """
+        return self.fit(X, y).transform(X)
+
+
+class BagMinMaxScaler(BagScaler):
+    """BagScaler using sklearn's MinMaxScaler."""
+    def __init__(self, **kwargs):
+        super().__init__(scaler=MinMaxScaler(**kwargs))
+
+
+class BagStandardScaler(BagScaler):
+    """BagScaler using sklearn's StandardScaler."""
+    def __init__(self, **kwargs):
+        super().__init__(scaler=StandardScaler(**kwargs))
+
+
+class BagMaxAbsScaler(BagScaler):
+    """BagScaler using sklearn's MaxAbsScaler."""
+    def __init__(self, **kwargs):
+        super().__init__(scaler=MaxAbsScaler(**kwargs))
+
+
+class BagRobustScaler(BagScaler):
+    """BagScaler using sklearn's RobustScaler."""
+    def __init__(self, **kwargs):
+        super().__init__(scaler=RobustScaler(**kwargs))
