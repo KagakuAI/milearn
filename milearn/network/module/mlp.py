@@ -13,10 +13,6 @@ from torch.utils.data.dataloader import DataLoader
 from torch import Tensor
 from typing import List
 from typing import Union
-from milearn.network.classifier import BagWrapperMLPNetworkClassifier
-from milearn.network.regressor import BagWrapperMLPNetworkRegressor
-from milearn.network.classifier import InstanceWrapperMLPNetworkClassifier
-from milearn.network.regressor import InstanceWrapperMLPNetworkRegressor
 
 
 class DataModule(pl.LightningDataModule):
@@ -203,7 +199,7 @@ class BagWrapperMLPNetwork(MLPNetwork, StepwiseHopt):
         self.pool = pool
         self.save_hyperparameters()
 
-    def fit(self, X: List[ndarray], Y: Union[List[float], List[int]]) -> Union[BagWrapperMLPNetworkClassifier, BagWrapperMLPNetworkRegressor]:
+    def fit(self, X: List[ndarray], Y: Union[List[float], List[int]]):
         """Fit the model after pooling bag representations.
 
         Args:
@@ -252,7 +248,7 @@ class InstanceWrapperMLPNetwork(MLPNetwork, StepwiseHopt):
         if self.pool != "mean":
             raise ValueError(f"Pooling strategy '{self.pool}' is not recognized.")
 
-    def fit(self, X: List[ndarray], Y: Union[List[float], List[int]]) -> Union[InstanceWrapperMLPNetworkClassifier, InstanceWrapperMLPNetworkRegressor]:
+    def fit(self, X: List[ndarray], Y: Union[List[float], List[int]]):
         """Fit model after converting bags to single-instance dataset.
 
         Args:

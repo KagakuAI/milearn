@@ -18,8 +18,6 @@ from torch.utils.data.dataloader import DataLoader
 from torch import Tensor
 from torch.nn.modules.activation import GELU
 from torch.nn.modules.linear import Linear
-from milearn.network.module.base import DataModule
-from milearn.network.module.mlp import DataModule
 from typing import Any
 from typing import Optional
 from torch.optim.adamw import AdamW

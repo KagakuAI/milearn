@@ -7,7 +7,6 @@ from .module.classic import BagNetwork, InstanceNetwork
 from .module.dynamic import DynamicPoolingNetwork
 from .module.mlp import BagWrapperMLPNetwork, InstanceWrapperMLPNetwork
 from typing import Any
-from milearn.network.regressor import DynamicPoolingNetworkRegressor
 from numpy import ndarray
 from typing import List
 
@@ -113,7 +112,7 @@ class DynamicPoolingNetworkRegressor(DynamicPoolingNetwork, BaseRegressor):
         """
         super().__init__(**kwargs)
 
-    def fit(self, x: List[ndarray], y: List[float]) -> DynamicPoolingNetworkRegressor:
+    def fit(self, x: List[ndarray], y: List[float]) -> "DynamicPoolingNetworkRegressor":
         """Fit the network on training data with scaled target values.
 
         Args:

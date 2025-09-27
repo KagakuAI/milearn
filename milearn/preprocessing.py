@@ -1,8 +1,6 @@
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import MinMaxScaler, StandardScaler, MaxAbsScaler, RobustScaler
-from sklearn.preprocessing._data import MinMaxScaler
-from milearn.preprocessing import BagMinMaxScaler
 from numpy import ndarray
 from typing import Any
 from typing import List
@@ -25,7 +23,7 @@ class BagScaler(BaseEstimator, TransformerMixin):
         """
         self.scaler = scaler if scaler is not None else MinMaxScaler()
 
-    def fit(self, x: List[ndarray], y: Optional[Any] = None) -> BagMinMaxScaler:
+    def fit(self, x: List[ndarray], y: Optional[Any] = None) -> "BagMinMaxScaler":
         """
         Fit the scaler using all instances from all bags.
 
