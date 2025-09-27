@@ -4,7 +4,6 @@ import torch
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 
 DEFAULT_PARAM_GRID = {
-
     # Fixed hparams
     "max_epochs": 1000,
     "early_stopping": True,
@@ -29,16 +28,44 @@ DEFAULT_PARAM_GRID = {
     "random_seed": [1, 2, 3, 4, 5],
 }
 
+
 def get_optimal_torch_threads(n_jobs: int) -> int:
+    """
+    Get optimal number of torch threads for parallel jobs.
+
+    Args:
+        n_jobs (int): number of parallel jobs.
+
+    Returns:
+        int: number of threads to allocate per job.
+    """
     total_cpus = os.cpu_count() or 1
     return max(1, total_cpus // n_jobs)
 
+
 class StepwiseHopt:
+    """
+    Stepwise hyperparameter optimization.
+    """
+
     def _evaluate_model(self, cls, hparams, best_params, param, val, x, y, n_jobs):
+        """
+        Train and evaluate a model for a given hyperparameter setting.
 
-        # limit torch threads for this trial
+        Args:
+            cls (type): model class.
+            hparams (dict): base hyperparameters.
+            best_params (dict): best parameters found so far.
+            param (str): name of the parameter being optimized.
+            val (Any): value of the parameter being tested.
+            x (list | np.ndarray): input data.
+            y (list | np.ndarray): target labels.
+            n_jobs (int): number of parallel jobs.
+
+        Returns:
+            tuple: (val, loss, epochs_trained, elapsed_model_time).
+        """
         torch.set_num_threads(get_optimal_torch_threads(n_jobs))
-
         valid_args = set(hparams.keys())
         tmp_params = {**hparams, **best_params, param: val}
         safe_params = {k: v for k, v in tmp_params.items() if k in valid_args}
@@ -54,24 +81,31 @@ class StepwiseHopt:
         return val, loss, epochs_trained, elapsed_model_time
 
     def hopt(self, x, y, param_grid=None, verbose=True):
+        """
+        Perform stepwise hyperparameter optimization.
 
+        Args:
+            x (list | np.ndarray): input data.
+            y (list | np.ndarray): target labels.
+            param_grid (dict | None): parameter grid to search.
+            verbose (bool): whether to print progress.
+
+        Returns:
+            dict: best hyperparameters found.
+        """
         if param_grid is None:
             param_grid = DEFAULT_PARAM_GRID
 
-        # 1. Filter hparams
         valid_args = set(self.hparams.keys())
         filtered_grid = {k: v for k, v in param_grid.items() if k in valid_args}
 
-        # 2. Start logging
         total_steps = sum(len(v) for v in filtered_grid.values() if isinstance(v, (list, tuple)))
         current_step = 0
         start_time = time.time()
 
-        # 3. Start stepwise optimization
         best_params = {}
         for param, options in filtered_grid.items():
-            # 3.1 Add fixed hparams (not list or tuple)
-            if not isinstance(options, (list)): # TODO option can be tuple layers size
+            if not isinstance(options, (list)):  # fixed hyperparameter
                 best_params[param] = options
                 continue
 
@@ -81,22 +115,19 @@ class StepwiseHopt:
             if verbose:
                 print(f"Optimizing hyperparameter: {param} ({len(options)} options)")
 
-            # 3.2 Prepare the list of models
             n_jobs = len(options)
             args_list = [
                 (self.__class__, self.hparams, best_params, param, val, x, y, n_jobs)
                 for val in options
             ]
 
-            # 3.3 Start multi-thread hparams evaluation
             with ThreadPoolExecutor(max_workers=n_jobs) as executor:
                 results = list(executor.map(lambda args: self._evaluate_model(*args), args_list))
 
-            # 3.4 Collect and print the results
             for val, loss, epochs, model_time in results:
                 current_step += 1
                 progress_pct = (current_step / total_steps) * 100
-                elapsed_min = model_time / 60.0  # show per-model time in minutes
+                elapsed_min = model_time / 60.0
 
                 if verbose:
                     print(f"[{current_step}/{total_steps} | {progress_pct:4.1f}% | {elapsed_min:4.1f} min] "
@@ -111,10 +142,8 @@ class StepwiseHopt:
             if verbose and best_val is not None:
                 print(f"Best {param} = {str(best_val)}, val_loss = {best_loss:.4f}")
 
-        # 4. Update with the found final best hparams
         self.hparams.update(best_params)
 
-        # 5. Finish optimization
         total_time_min = (time.time() - start_time) / 60.0
         if verbose:
             print(f"Stepwise optimization completed in {total_time_min:.1f} min\n")

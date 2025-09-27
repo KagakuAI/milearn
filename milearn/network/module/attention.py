@@ -5,19 +5,51 @@ from .base import BaseNetwork, instance_dropout
 class BaseAttentionNetwork(BaseNetwork):
     def __init__(self, tau=1.0, **kwargs):
         """
-        Base class for attention-based MIL networks
+        Base class for attention-based MIL networks.
+
+        Args:
+            tau (float): temperature scaling parameter for attention
+            **kwargs: additional arguments passed to BaseNetwork
         """
         super().__init__(**kwargs)
         self.tau = tau
 
     def _create_special_layers(self, input_layer_size: int, hidden_layer_sizes: tuple[int, ...]):
+        """
+        Create attention layers for the network.
+
+        Args:
+            input_layer_size (int): size of the input features
+            hidden_layer_sizes (tuple[int, ...]): sizes of hidden layers
+        """
         self._create_attention(hidden_layer_sizes)
 
     def _create_attention(self, hidden_layer_sizes):
+        """
+        Define the attention mechanism.
+
+        Args:
+            hidden_layer_sizes (tuple[int, ...]): sizes of hidden layers
+
+        Raises:
+            NotImplementedError: must be implemented in subclasses
+        """
         raise NotImplementedError
 
     def forward(self, bags, inst_mask):
+        """
+        Forward pass through the attention network.
 
+        Args:
+            bags (torch.Tensor): batch of input bags (B, N, D)
+            inst_mask (torch.Tensor): instance mask (B, N, 1)
+
+        Returns:
+            tuple: (bag_embed, inst_weights, bag_pred)
+                - bag_embed (torch.Tensor): bag-level embedding
+                - inst_weights (torch.Tensor): attention weights per instance
+                - bag_pred (torch.Tensor): final bag prediction
+        """
         # 1. Compute instance embeddings
         inst_embed = self.instance_transformer(bags)
 
@@ -35,11 +67,27 @@ class BaseAttentionNetwork(BaseNetwork):
         return bag_embed, inst_weights, bag_pred
 
     def compute_attention(self, H, M):
+        """
+        Compute attention weights and bag embedding.
+
+        Args:
+            H (torch.Tensor): instance embeddings (B, N, D)
+            M (torch.Tensor): instance mask (B, N, 1)
+
+        Raises:
+            NotImplementedError: must be implemented in subclasses
+        """
         raise NotImplementedError
+
 
 class AdditiveAttentionNetwork(BaseAttentionNetwork):
     def _create_attention(self, hidden_layer_sizes):
+        """
+        Create additive attention mechanism.
 
+        Args:
+            hidden_layer_sizes (tuple[int, ...]): sizes of hidden layers
+        """
         self.attention = nn.Sequential(
             nn.Linear(hidden_layer_sizes[-1], hidden_layer_sizes[-1]),
             nn.Tanh(),
@@ -47,7 +95,18 @@ class AdditiveAttentionNetwork(BaseAttentionNetwork):
         )
 
     def compute_attention(self, inst_embed, inst_mask):
+        """
+        Compute additive attention.
 
+        Args:
+            inst_embed (torch.Tensor): instance embeddings (B, N, D)
+            inst_mask (torch.Tensor): instance mask (B, N, 1)
+
+        Returns:
+            tuple: (bag_embed, inst_weights)
+                - bag_embed (torch.Tensor): bag-level embedding
+                - inst_weights (torch.Tensor): attention weights per instance
+        """
         # 1. Compute logits
         inst_logits = self.attention(inst_embed) / self.tau
 
@@ -63,16 +122,33 @@ class AdditiveAttentionNetwork(BaseAttentionNetwork):
 
         return bag_embed, inst_weights
 
+
 class SelfAttentionNetwork(BaseAttentionNetwork):
     def _create_attention(self, hidden_layer_sizes):
+        """
+        Create self-attention mechanism.
 
+        Args:
+            hidden_layer_sizes (tuple[int, ...]): sizes of hidden layers
+        """
         D = hidden_layer_sizes[-1]
         self.q_proj = nn.Linear(D, D)
         self.k_proj = nn.Linear(D, D)
         self.v_proj = nn.Linear(D, D)
 
     def compute_attention(self, inst_embed, inst_mask):
+        """
+        Compute self-attention.
 
+        Args:
+            inst_embed (torch.Tensor): instance embeddings (B, N, D)
+            inst_mask (torch.Tensor): instance mask (B, N, 1)
+
+        Returns:
+            tuple: (bag_embed, inst_weights)
+                - bag_embed (torch.Tensor): bag-level embedding
+                - inst_weights (torch.Tensor): attention weights per instance
+        """
         # 1. Project to Q, K, V
         Q = self.q_proj(inst_embed)
         K = self.k_proj(inst_embed)
@@ -96,16 +172,41 @@ class SelfAttentionNetwork(BaseAttentionNetwork):
 
         return bag_embed, inst_weights
 
+
 class HopfieldAttentionNetwork(BaseAttentionNetwork):
     def __init__(self, tau=1.0, **kwargs):
+        """
+        Hopfield-style attention network.
+
+        Args:
+            tau (float): scaling factor for attention (used as beta)
+            **kwargs: additional arguments passed to BaseNetwork
+        """
         super().__init__(**kwargs)
         self.beta = tau
 
     def _create_attention(self, hidden_layer_sizes):
+        """
+        Create Hopfield-style attention mechanism.
+
+        Args:
+            hidden_layer_sizes (tuple[int, ...]): sizes of hidden layers
+        """
         self.query_vector = nn.Parameter(torch.randn(1, hidden_layer_sizes[-1]))
 
     def compute_attention(self, inst_embed, inst_mask):
+        """
+        Compute Hopfield-style attention.
 
+        Args:
+            inst_embed (torch.Tensor): instance embeddings (B, N, D)
+            inst_mask (torch.Tensor): instance mask (B, N, 1)
+
+        Returns:
+            tuple: (bag_embed, inst_weights)
+                - bag_embed (torch.Tensor): bag-level embedding
+                - inst_weights (torch.Tensor): attention weights per instance
+        """
         B, N, D = inst_embed.shape
 
         # 1. Expand query vector to batch

@@ -1,38 +1,74 @@
 import numpy as np
-from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.preprocessing import MinMaxScaler, StandardScaler, MaxAbsScaler, RobustScaler
+import matplotlib.pyplot as plt
+from torchvision import datasets, transforms
 
-class BagScaler(BaseEstimator, TransformerMixin):
-    """A wrapper to apply sklearn scalers to bags of instances."""
-    def __init__(self, scaler=None):
-        self.scaler = scaler if scaler is not None else MinMaxScaler()
 
-    def fit(self, x, y=None):
-        all_instances = np.vstack(x)  # stack all bags
-        self.scaler.fit(all_instances, y)
-        return self
+def load_mnist(flatten=True):
+    """
+    Load MNIST dataset.
 
-    def transform(self, x):
-        x_scaled = []
-        for bag in x:
-            x_scaled.append(self.scaler.transform(bag))
-        return x_scaled
+    Args:
+        flatten (bool): If True, flatten 28x28 images to 784-dimensional vectors.
 
-    def fit_transform(self, X, y=None, **fit_params):
-        return self.fit(X, y).transform(X)
+    Returns:
+        tuple:
+            - data (np.ndarray): images as arrays (flattened if flatten=True)
+            - targets (np.ndarray): corresponding labels
+    """
+    transform = transforms.Compose([transforms.ToTensor()])
+    mnist = datasets.MNIST(root="./data", train=True, download=True, transform=transform)
+    data = mnist.data.numpy()
+    targets = mnist.targets.numpy()
 
-class BagMinMaxScaler(BagScaler):
-    def __init__(self, **kwargs):
-        super().__init__(scaler=MinMaxScaler(**kwargs))
+    if flatten:
+        data = data.reshape((data.shape[0], -1))
+    return data, targets
 
-class BagStandardScaler(BagScaler):
-    def __init__(self, **kwargs):
-        super().__init__(scaler=StandardScaler(**kwargs))
 
-class BagMaxAbsScaler(BagScaler):
-    def __init__(self, **kwargs):
-        super().__init__(scaler=MaxAbsScaler(**kwargs))
+def create_bags_or(data, targets, bag_size=10, num_bags=1000, key_digit=3, key_instances_per_bag=1, random_state=42):
+    """
+    Create OR-type MIL bags. Positive bags contain at least one key instance.
 
-class BagRobustScaler(BagScaler):
-    def __init__(self, **kwargs):
-        super().__init__(scaler=RobustScaler(**kwargs))
+    Args:
+        data (np.ndarray): instance data
+        targets (np.ndarray): instance labels
+        bag_size (int): number of instances per bag
+        num_bags (int): number of bags to generate
+        key_digit (int): digit considered as key instance
+        key_instances_per_bag (int): number of key instances in positive bags
+        random_state (int): random seed
+
+    Returns:
+        tuple:
+            - bags (list of np.ndarray): list of bags
+            - bag_labels (list of int): bag-level labels (0/1)
+            - key_indices_per_bag (list of list of int): positions of key instances in each bag
+    """
+    rng = np.random.RandomState(random_state)
+    key_indices_all = np.where(targets == key_digit)[0]
+    non_key_indices_all = np.where(targets != key_digit)[0]
+
+    bags, bag_labels, key_indices_per_bag = [], [], []
+
+    for _ in range(num_bags):
+        is_positive = rng.rand() < 0.5
+
+        if is_positive:
+            key_sample_indices = rng.choice(key_indices_all, size=key_instances_per_bag, replace=False)
+            remaining = bag_size - key_instances_per_bag
+            non_key_sample_indices = rng.choice(non_key_indices_all, size=remaining, replace=False)
+            full_indices = np.concatenate([key_sample_indices, non_key_sample_indices])
+            rng.shuffle(full_indices)
+            key_pos_in_bag = [i for i, idx in enumerate(full_indices) if idx in key_sample_indices]
+            label = 1
+        else:
+            full_indices = rng.choice(non_key_indices_all, size=bag_size, replace=False)
+            key_pos_in_bag = []
+            label = 0
+
+        bag = data[full_indices]
+        bags.append(bag)
+        bag_labels.append(label)
+        key_indices_per_bag.append(key_pos_in_bag)
+
+    return bags, bag_labels, key_indices_per_bag
