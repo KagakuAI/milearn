@@ -4,9 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mikit-learn"
-version = "0.1.0"
+version = "0.3.0"
 description = "Multi-instance machine learning in Python"
-readme = "README.rst"
+readme = { file = "README.rst", content-type = "text/x-rst" }
 license = { text = "MIT" }
 authors = [
   { name = "Dmitry Zankov", email = "dvzankov@gmail.com" }
