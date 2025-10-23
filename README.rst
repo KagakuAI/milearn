@@ -4,20 +4,20 @@
 ``milearn`` is designed to mimic the scikit-learn interface to simplify its usage and integration with other tools.
 
 Key Features
-------------
+------------------------
 
 - Traditional and neural network-based MIL algorithms (regression and classification)
 - Integrated stepwise model hyperparameter optimization (recommended for small datasets)
 
 Installation
-------------
+------------------------
 
 .. code-block:: bash
 
     pip install mikit-learn
 
 Quick Start
------------
+-----------------------
 
 .. code-block:: python
 
@@ -51,13 +51,13 @@ Quick Start
     w_pred = model.get_instance_weights(x_test_scaled) # predicted instance weights
 
 Tutorials
------------
+-----------------------
 
 Several examples of the ``milearn`` application to the classification/regression problem and key instance detection 
 for the MNIST dataset can be found in `notebooks <notebooks>`_ .
 
 Paper
------------
+-----------------------
 Application cases demonstrated in the paper can be found in:
 
 - MNIST classification: `Notebook <https://github.com/KagakuAI/milearn/blob/main/notebooks/Tutorial_2_KID_for_mnist_classification.ipynb>`_
