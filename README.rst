@@ -33,7 +33,8 @@ Quick Start
                                         bag_agg="mean", random_state=42)
 
     # 2. Train/test split and scale features
-    x_train, x_test, y_train, y_test, key_train, key_test = train_test_split(bags, labels, key, random_state=42)
+    x_train, x_test, y_train, y_test, key_train, key_test = train_test_split(bags, labels, key, 
+                                                                             random_state=42)
     scaler = BagMinMaxScaler()
     scaler.fit(x_train)
     x_train_scaled = scaler.transform(x_train)
@@ -59,7 +60,7 @@ Paper
 -----------
 Application cases demonstrated in the paper can be found in:
 
-- MNIST classification: `MNIST classification <https://github.com/KagakuAI/milearn/blob/main/notebooks/Tutorial_2_KID_for_mnist_classification.ipynb>`_
+- MNIST classification: `Notebook <https://github.com/KagakuAI/milearn/blob/main/notebooks/Tutorial_2_KID_for_mnist_classification.ipynb>`_
 
 - MNIST regression: `Notebook <https://github.com/KagakuAI/milearn/blob/main/notebooks/Tutorial_3_KID_for_mnist_regression.ipynb>`_
 
