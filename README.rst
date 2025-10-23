@@ -54,7 +54,7 @@ Tutorials
 -----------------------
 
 Several examples of the ``milearn`` application to the classification/regression problem and key instance detection 
-for the MNIST dataset can be found in `notebooks <notebooks>`_ .
+for the MNIST dataset can be found in `notebooks <https://github.com/KagakuAI/milearn/tree/main/notebooks>`_.
 
 Paper
 -----------------------
