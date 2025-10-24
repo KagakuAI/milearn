@@ -66,4 +66,4 @@ Application cases demonstrated in the paper can be found in:
 - Molecular conformers: `Notebook <https://github.com/KagakuAI/QSARmil/blob/main/notebooks/Tutorial_2_KID_for_conformers.ipynb>`_
 - Molecular fragments: `Notebook <https://github.com/KagakuAI/QSARmil/blob/main/notebooks/Tutorial_3_KID_for_fragments.ipynb>`_
 - Protein protein interaction: `Notebook <https://github.com/KagakuAI/SEQmil/blob/main/notebooks/Tutorial_1_KID_for_protein_protein_interaction.ipynb>`_
-- Consensus MIL: `Notebook <https://github.com/KagakuAI/SEQmil/blob/main/notebooks/Tutorial_4_Consensus_mil.ipynb>`_
+- Consensus MIL: `Notebook <https://github.com/KagakuAI/milearn/blob/main/notebooks/Tutorial_4_Consensus_mil.ipynb>`_
