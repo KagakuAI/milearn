@@ -1,4 +1,5 @@
-``milearn``: Multi-instance machine learning in Python
+
+milearn: Multi-instance machine learning in Python
 ==========================================================
 
 ``milearn`` is designed to mimic the scikit-learn interface to simplify its usage and integration with other tools.
@@ -33,7 +34,7 @@ Quick Start
                                         bag_agg="mean", random_state=42)
 
     # 2. Train/test split and scale features
-    x_train, x_test, y_train, y_test, key_train, key_test = train_test_split(bags, labels, key, 
+    x_train, x_test, y_train, y_test, key_train, key_test = train_test_split(bags, labels, key,
                                                                              random_state=42)
     scaler = BagMinMaxScaler()
     scaler.fit(x_train)
@@ -42,18 +43,18 @@ Quick Start
 
     # 3. Train model
     model = DynamicPoolingNetworkRegressor()
-    model.hopt(x_train_scaled, y_train, # recomended for small datasets only
+    model.hopt(x_train_scaled, y_train,  # recommended for small datasets only
                param_grid=DEFAULT_PARAM_GRID, verbose=True)
     model.fit(x_train_scaled, y_train)
 
     # 4. Get predictions
-    y_pred = model.predict(x_test_scaled) # predicted labels
-    w_pred = model.get_instance_weights(x_test_scaled) # predicted instance weights
+    y_pred = model.predict(x_test_scaled)  # predicted labels
+    w_pred = model.get_instance_weights(x_test_scaled)  # predicted instance weights
 
 Tutorials
 -----------------------
 
-Several examples of the ``milearn`` application to the classification/regression problem and key instance detection 
+Several examples of the ``milearn`` application to the classification/regression problem and key instance detection
 for the MNIST dataset can be found in `notebooks <https://github.com/KagakuAI/milearn/tree/main/notebooks>`_.
 
 Paper
@@ -61,12 +62,8 @@ Paper
 Application cases demonstrated in the paper can be found in:
 
 - MNIST classification: `Notebook <https://github.com/KagakuAI/milearn/blob/main/notebooks/Tutorial_2_KID_for_mnist_classification.ipynb>`_
-
 - MNIST regression: `Notebook <https://github.com/KagakuAI/milearn/blob/main/notebooks/Tutorial_3_KID_for_mnist_regression.ipynb>`_
-
 - Molecular conformers: `Notebook <https://github.com/KagakuAI/QSARmil/blob/main/notebooks/Tutorial_2_KID_for_conformers.ipynb>`_
-
 - Molecular fragments: `Notebook <https://github.com/KagakuAI/QSARmil/blob/main/notebooks/Tutorial_3_KID_for_fragments.ipynb>`_
-
 - Protein protein interaction: `Notebook <https://github.com/KagakuAI/SEQmil/blob/main/notebooks/Tutorial_1_KID_for_protein_protein_interaction.ipynb>`_
-
+- Consensus MIL: `Notebook <https://github.com/KagakuAI/SEQmil/blob/main/notebooks/Tutorial_4_Consensus_mil.ipynb>`_
