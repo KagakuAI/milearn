@@ -1,5 +1,5 @@
 from .base import BaseNetwork, instance_dropout
-from .hopt import StepwiseHopt
+from .hopt import StepwiseHopt, DEFAULT_PARAM_GRID
 from typing import Any
 from torch import Tensor
 from typing import Tuple
@@ -62,7 +62,7 @@ class BagNetwork(BaseNetwork, StepwiseHopt):
 
         return bag_embed, None, bag_pred
 
-    def hopt(self, x, y, param_grid, verbose=False):
+    def hopt(self, x, y, param_grid=DEFAULT_PARAM_GRID, verbose=False):
         """Hyperparameter optimization with support for pooling methods.
 
         Args:
@@ -136,7 +136,7 @@ class InstanceNetwork(BaseNetwork):
 
         return None, None, bag_pred
 
-    def hopt(self, x, y, param_grid, verbose=True):
+    def hopt(self, x, y, param_grid=DEFAULT_PARAM_GRID, verbose=True):
         """Hyperparameter optimization with support for pooling methods.
 
         Args:
