@@ -54,15 +54,16 @@ Tutorials
 ------------------------
 
 Several examples of the ``milearn`` application to the classification/regression problem and key instance detection
-for the MNIST dataset can be found in `notebooks <https://github.com/KagakuAI/milearn/tree/main/notebooks>`_.
+for the MNIST dataset can be found in `tutorial collection <notebooks>`_ .
 
 Paper
 ------------------------
+
 Application cases demonstrated in the paper can be found in:
 
-- MNIST classification: `Notebook <https://github.com/KagakuAI/milearn/blob/main/notebooks/Tutorial_2_KID_for_mnist_classification.ipynb>`_
-- MNIST regression: `Notebook <https://github.com/KagakuAI/milearn/blob/main/notebooks/Tutorial_3_KID_for_mnist_regression.ipynb>`_
-- Molecular conformers: `Notebook <https://github.com/KagakuAI/QSARmil/blob/main/notebooks/Tutorial_2_KID_for_conformers.ipynb>`_
-- Molecular fragments: `Notebook <https://github.com/KagakuAI/QSARmil/blob/main/notebooks/Tutorial_3_KID_for_fragments.ipynb>`_
-- Protein protein interaction: `Notebook <https://github.com/KagakuAI/SEQmil/blob/main/notebooks/Tutorial_1_KID_for_protein_protein_interaction.ipynb>`_
-- Consensus MIL: `Notebook <https://github.com/KagakuAI/milearn/blob/main/notebooks/Tutorial_4_MIL_for_logS.ipynb>`_
+- MNIST classification: `Notebook <https://github.com/KagakuAI/milearn/blob/main/notebooks/Tutorial_2_KID_for_mnist_classification.ipynb>`_ .
+- MNIST regression: `Notebook <https://github.com/KagakuAI/milearn/blob/main/notebooks/Tutorial_3_KID_for_mnist_regression.ipynb>`_ .
+- Molecular conformers: `Notebook <https://github.com/KagakuAI/QSARmil/blob/main/notebooks/Tutorial_2_KID_for_conformers.ipynb>`_ .
+- Molecular fragments: `Notebook <https://github.com/KagakuAI/QSARmil/blob/main/notebooks/Tutorial_3_KID_for_fragments.ipynb>`_ .
+- Protein protein interaction: `Notebook <https://github.com/KagakuAI/SEQmil/blob/main/notebooks/Tutorial_1_KID_for_protein_protein_interaction.ipynb>`_ .
+- Consensus MIL: `Notebook <https://github.com/KagakuAI/milearn/blob/main/notebooks/Tutorial_4_MIL_for_logS.ipynb>`_ .
